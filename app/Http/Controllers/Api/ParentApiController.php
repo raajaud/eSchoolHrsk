@@ -124,7 +124,7 @@ class ParentApiController extends Controller {
         }
 
         if (Auth::attempt([
-            'email'    => $request->email,
+            'mobile'    => $request->email,
             'password' => $request->password
         ])) {
             // $auth = Auth::user()->load('child.user', 'child.class_section.class', 'child.class_section.section', 'child.class_section.medium', 'child.user.school');

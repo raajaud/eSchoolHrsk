@@ -124,7 +124,7 @@ class StudentApiController extends Controller {
         }
 
         $user = User::withTrashed()
-        ->where('email', $request->gr_number)
+        ->where('mobile', $request->gr_number)
         ->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
@@ -134,7 +134,7 @@ class StudentApiController extends Controller {
             }
         }
 
-        if (Auth::attempt(['email' => $request->gr_number, 'password' => $request->password, 'status' => 1])) {
+        if (Auth::attempt(['mobile' => $request->gr_number, 'password' => $request->password, 'status' => 1])) {
             //Here Email Field is referenced as a GR Number for Student
             $auth = Auth::user();
             // Check role
