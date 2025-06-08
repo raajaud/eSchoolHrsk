@@ -21,4 +21,4 @@ jobs:
           SOURCE: "./"
           REMOTE_HOST: "ec2-52-66-89-121.ap-south-1.compute.amazonaws.com"
           REMOTE_USER: "ubuntu"
-          TARGET: "/var/www/hrskadmin"
+          TARGET: "/var/www/html"
