@@ -75,7 +75,7 @@ class ApiController extends Controller
     private AttachmentInterface $attachment;
     private SchoolSettingInterface $schoolSettings;
     private FeesInterface $fees;
-    
+
 
     public function __construct(CachingService $cache, HolidayInterface $holiday, StudentInterface $student, PaymentConfigurationInterface $paymentConfiguration, PaymentTransactionInterface $paymentTransaction, GalleryInterface $gallery, SessionYearInterface $sessionYear, LeaveDetailInterface $leaveDetail, LeaveMasterInterface $leaveMaster, LeaveInterface $leave, UserInterface $user, MediumInterface $medium, ClassSectionInterface $classSection, ExamResultInterface $examResult, GradesInterface $grade, FilesInterface $files, ChatInterface $chat, MessageInterface $message, AttachmentInterface $attachment, SchoolSettingInterface $schoolSettings, FeesInterface $fees)
 
@@ -106,7 +106,7 @@ class ApiController extends Controller
     public function logout(Request $request)
     {
         try {
-            
+
             $user = $request->user();
             $user->fcm_id = '';
             $user->save();
@@ -116,7 +116,7 @@ class ApiController extends Controller
             if ($token) {
                 // Find the token in the personal_access_tokens table
                 $accessToken = PersonalAccessToken::findToken($token);
-    
+
                 if ($accessToken) {
                     // Delete the token to revoke access
                     $accessToken->delete();
@@ -146,7 +146,7 @@ class ApiController extends Controller
 
             $data = $data->whereDate('date', '>=',$sessionYear->start_date)
                 ->whereDate('date', '<=',$sessionYear->end_date)->get();
-            
+
             ResponseService::successResponse("Holidays Fetched Successfully", $data);
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e);
@@ -199,7 +199,7 @@ class ApiController extends Controller
         ]);
         try {
 
-            $schoolCode = $request->school_code;
+            $schoolCode = env('SCHOOLCODE');
 
             if ($schoolCode) {
                 $school = School::on('mysql')->where('code',$schoolCode)->first();
@@ -209,9 +209,9 @@ class ApiController extends Controller
                     DB::purge('school');
                     DB::connection('school')->reconnect();
                     DB::setDefaultConnection('school');
-                    
+
                     $response = Password::sendResetLink(['email' => $request->email]);
-                   
+
                     if ($response == Password::RESET_LINK_SENT) {
                         ResponseService::successResponse("Forgot Password email send successfully");
                     } else {
@@ -225,7 +225,7 @@ class ApiController extends Controller
                 return response()->json(['message' => 'Unauthenticated'], 400);
             }
 
-           
+
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e);
             ResponseService::errorResponse();
@@ -334,7 +334,7 @@ class ApiController extends Controller
                             if ($data->payment_gateway == "Flutterwave") {
                                 $paymentService = PaymentService::create($data->payment_gateway, $data->school_id);
                                 // $paymentIntent = $paymentService->verifyPayment($data->order_id);
-                                
+
                                 // Update transaction status based on verification
                                 if (isset($paymentIntent['status'])) {
                                     $status = match (strtolower($paymentIntent['status'])) {
@@ -342,7 +342,7 @@ class ApiController extends Controller
                                         'failed', 'cancelled' => 'failed',
                                         default => 'pending'
                                     };
-                                    
+
                                     if ($status !== 'pending') {
                                         $this->paymentTransaction->update($data->id, [
                                             'payment_status' => $status,
@@ -357,7 +357,7 @@ class ApiController extends Controller
                                 $paymentIntent = PaymentService::create($data->payment_gateway, $data->school_id)
                                     ->retrievePaymentIntent($data->order_id);
                                 $paymentIntent = PaymentService::formatPaymentIntent($data->payment_gateway, $paymentIntent);
-                                
+
                                 if ($paymentIntent['status'] != "pending") {
                                     $this->paymentTransaction->update($data->id, [
                                         'payment_status' => $paymentIntent['status'],
@@ -467,7 +467,7 @@ class ApiController extends Controller
             'files.*' => ['nullable','file',new MaxFileSize($file_upload_size_limit)]
         ],[
             'files.*' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
 
@@ -478,7 +478,7 @@ class ApiController extends Controller
             DB::beginTransaction();
             $sessionYear = $this->cache->getDefaultSessionYear();
             $leaveMaster = $this->leaveMaster->builder()->where('session_year_id', $sessionYear->id)->first();
-            
+
             if (!$leaveMaster) {
                 ResponseService::errorResponse("Kindly contact the school admin to update settings for continued access.");
             }
@@ -801,7 +801,7 @@ class ApiController extends Controller
     {
         ResponseService::noFeatureThenSendJson('Exam Management');
 
-        
+
         try {
 
             $validator = Validator::make($request->all(), [
@@ -938,7 +938,7 @@ class ApiController extends Controller
 
     public function sendMessage(Request $request)
     {
-         
+
         $validator = Validator::make($request->all(), [
             'to' => 'required'
         ]);
@@ -979,10 +979,10 @@ class ApiController extends Controller
                 }
                 $this->attachment->createBulk($data);
             }
-            
+
             // set attachment
             $message['attachment'] = $message->load(['attachment'])->toArray();
-            
+
             $user[] = $request->to;
             $title = 'New Message from ' .$chat->receiver->full_name;
             $body = $request->message;
@@ -1027,7 +1027,7 @@ class ApiController extends Controller
             })
             ->with('attachment')->orderBy('id','DESC')
             ->paginate(10);
-            
+
             ResponseService::successResponse("data_fetch_successfully",$data);
 
         } catch (\Throwable $th) {
@@ -1081,11 +1081,11 @@ class ApiController extends Controller
             ]);
             if ($validator->fails()) {
                 ResponseService::validationError($validator->errors()->first());
-            }    
+            }
         }
-        
+
         try {
-            
+
             $users = [];
             if (Auth::user()) {
                 $searchTerm = $request->search;
@@ -1133,7 +1133,7 @@ class ApiController extends Controller
                         ]);
                         if ($validator->fails()) {
                             ResponseService::validationError($validator->errors()->first());
-                        } 
+                        }
                         $users = $users->role(['Guardian'])->whereHas('child',function($q) use($request) {
                             $q->where('school_id',Auth::user()->school_id)
                             ->where('class_section_id', $request->class_section_id);
@@ -1144,16 +1144,16 @@ class ApiController extends Controller
                         $users = $users->where('school_id',Auth::user()->school_id)->has('staff');
                     }
                 } else if(Auth::user()->hasRole('Guardian')) { // Guardian login
-                    
+
                     $users = $users->where('school_id', Auth::user()->school_id)->has('staff');
-                    
+
                     if ($request->child_id) {
                         $class_sections = Students::where('id',$request->child_id)->pluck('class_section_id')->toArray();
                     } else {
                         $child_ids = Auth::user()->load('child.user')->child->pluck('id')->toArray();
-                        $class_sections = Students::whereIn('id',$child_ids)->pluck('class_section_id')->toArray();    
+                        $class_sections = Students::whereIn('id',$child_ids)->pluck('class_section_id')->toArray();
                     }
-                    
+
                     $class_sections = array_filter($class_sections);
 
                     $class_teachers = ClassTeacher::whereIn('class_section_id',$class_sections)->pluck('teacher_id')->toArray();
@@ -1219,7 +1219,7 @@ class ApiController extends Controller
                     $q->where('name',$request->role);
                 })->orderBy('first_name','ASC')->with('roles')->paginate(10);
             }
-            
+
             ResponseService::successResponse("Data Fetched Successfully",$users);
         } catch (\Throwable $th) {
             ResponseService::logErrorResponse($th);
@@ -1235,11 +1235,11 @@ class ApiController extends Controller
             'role.required' => 'The role field is mandatory. Please select a role.',
             'role.in' => 'The selected role is invalid. Valid roles are: Guardian, Staff, Student, Teacher.',
         ]);
-        
+
         if ($validator->fails()) {
             return ResponseService::validationError($validator->errors()->first());
         }
-        
+
         try {
             $data = [];
             if (Auth::user()) {
@@ -1249,7 +1249,7 @@ class ApiController extends Controller
                 if(!$roles_Staff) {
                     return ResponseService::errorResponse('Please create a role first before creating a chat with that role name as '.$request->role);
                 }
-                
+
                 if ($roles_Staff && $request->role == 'Staff' || $request->role == 'Teacher') {
                     // Staff
                     $data = Chat::where(function($q) {
@@ -1311,10 +1311,10 @@ class ApiController extends Controller
                     $data->setCollection($filteredData->values());
                     // return $data;
                 }
-                
-                
+
+
             }
-            
+
             ResponseService::successResponse("Data Fetched Successfully",$data);
         } catch (\Throwable $th) {
             ResponseService::logErrorResponse($th);
@@ -1331,7 +1331,7 @@ class ApiController extends Controller
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            
+
             $users = $this->user->builder()->role(['Teacher'])->select('id','first_name','last_name','image')
             ->whereHas('class_teacher',function($q) use($request) {
                 $q->where('class_section_id', $request->class_section_id);
@@ -1346,7 +1346,7 @@ class ApiController extends Controller
             //     $q->where('class_section_id', $request->class_section_id);
             // }])
             ->get();
-            
+
             ResponseService::successResponse("Data Fetched Successfully", $users);
 
         } catch (\Throwable $th) {
@@ -1363,31 +1363,31 @@ class ApiController extends Controller
 
                 if ($school_code) {
                     $school = School::on('mysql')->where('code', $school_code)->first();
-                    
+
                     if ($school) {
                         DB::setDefaultConnection('school');
                         Config::set('database.connections.school.database', $school->database_name);
                         DB::purge('school');
                         DB::connection('school')->reconnect();
                         DB::setDefaultConnection('school');
-                         
+
                         $names = array('school_name', 'school_tagline','horizontal_logo');
 
-                        $settings = $this->schoolSettings->getBulkData($names); 
+                        $settings = $this->schoolSettings->getBulkData($names);
 
                         $gallery = $this->gallery->builder()->with('file')->first();
                         if($gallery)
                         {
                             $gallery_images = $gallery->file->where('file_name', '!=' , 'YouTube Link')->pluck('file_url')->toArray();
                         }
-                       
+
                         $schoolDetails = array(
                                'school_name' => $settings['school_name'],
                                'school_tagline' => $settings['school_tagline'],
                                'school_logo' => $settings['horizontal_logo'],
                                'school_images' => $gallery_images ?? []
                         );
-                       
+
                     } else {
                         return response()->json(['message' => 'Invalid school code'], 400);
                     }
@@ -1395,7 +1395,7 @@ class ApiController extends Controller
                 } else {
                     return response()->json(['message' => 'Unauthenticated'], 400);
                 }
-               
+
 
             ResponseService::successResponse("Data Fetched Successfully", $schoolDetails);
         } catch (\Throwable $th) {
@@ -1409,46 +1409,46 @@ class ApiController extends Controller
         try {
 
             $school_code = $request->header('school-code');
-              
+
             if ($school_code) {
                 $school = School::on('mysql')->where('code', $school_code)->first();
-                
+
                 if ($school) {
                     DB::setDefaultConnection('school');
                     Config::set('database.connections.school.database', $school->database_name);
                     DB::purge('school');
                     DB::connection('school')->reconnect();
                     DB::setDefaultConnection('school');
-                     
+
                     $feesRemainderDuration = $this->schoolSettings->builder()->where('name','fees_remainder_duration')->value('data') ?? 2;
-            
+
                     $feesRemainderDuration = (int) $feesRemainderDuration;
-        
+
                     if (!$feesRemainderDuration) {
                         return response()->json(['message' => 'Remainder duration not found in settings'], 400);
                     }
-                   
+
                     $classesWithDueDates = $this->fees->builder()->with('installments')->get();
-                   
+
                     $today = Carbon::now();
-                  
+
                     foreach ($classesWithDueDates as $classFee) {
 
                         $dueDate = Carbon::parse($classFee->due_date);
                         $class_section_id = $this->classSection->builder()->where('class_id',$classFee->class_id)->first();
-                        $daysUntilDue = $today->diffInDays($dueDate, false); 
-                      
+                        $daysUntilDue = $today->diffInDays($dueDate, false);
+
                         if ($daysUntilDue <= $feesRemainderDuration && $daysUntilDue >= 0) {
-                    
+
                             $user = $this->student->builder()->whereIn('class_section_id', $class_section_id)->pluck('guardian_id')->toArray();
                             $title = 'Fees Due Reminder';
                             $body = "Pay fees if you didn't paid !!";
-                            $type = "fee-reminder"; 
+                            $type = "fee-reminder";
                             send_notification($user, $title, $body, $type);
-                        
+
                         }
                     }
-                   
+
                 } else {
                     return response()->json(['message' => 'Invalid school code'], 400);
                 }
@@ -1457,16 +1457,16 @@ class ApiController extends Controller
                 return response()->json(['message' => 'Unauthenticated'], 400);
             }
 
-            
+
             ResponseService::successResponse("Notification Sent Successfully",);
-    
+
         } catch (\Throwable $e) {
             ResponseService::logErrorResponse($e);
             return ResponseService::errorResponse();
         }
     }
 
-    
+
 
     public function paymentStatus(Request $request)
     {
@@ -1484,11 +1484,11 @@ class ApiController extends Controller
         Log::info('Flutterwave Successfully.');
         ResponseService::successResponse("Flutterwave Successfully.");
     }
-    
+
     public function flutterwaveCancelCallback() {
         Log::info('Flutterwave Payment Canceled.');
         ResponseService::successResponse("Flutterwave Payment Canceled.");
     }
-    
-    
+
+
 }

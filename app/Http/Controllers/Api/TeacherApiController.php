@@ -133,7 +133,7 @@ class TeacherApiController extends Controller
             ResponseService::validationError($validator->errors()->first());
         }
 
-        $school = School::on('mysql')->where('code',$request->school_code)->first();
+        $school = School::on('mysql')->where('code',env('SCHOOLCODE'))->first();
 
         if ($school) {
             DB::setDefaultConnection('school');
@@ -155,7 +155,7 @@ class TeacherApiController extends Controller
             if ($user->hasRole('Student') || $user->hasRole('Parent') || $user->hasRole('Guardian') ) {
                 return ResponseService::errorResponse('You must have a teacher / Staff role to log in.');
             }
-        }   
+        }
 
         if ($user && Hash::check($request->password, $user->password)) {
             if ($user->trashed()) {
@@ -210,44 +210,44 @@ class TeacherApiController extends Controller
         try {
             // Extract class_section_id and convert it to an array
             $section_ids = explode(',', $request->class_section_id);
-    
+
             // Start building the query
             $subjects = $this->subjectTeacher->builder()
                 ->with('subject:id,name,type', 'class_section')  // Eager load relations
                 ->whereIn('class_section_id', $section_ids);  // Filter by class_section_id
-    
+
             // Filter by subject_id if provided
             if ($request->has('subject_id')) {
                 $subjects = $subjects->where('subject_id', $request->subject_id);
             }
-    
+
             // Get the subjects
             $subjects = $subjects->get();
-    
+
             // If there are multiple sections, find the common subjects
             if (count($section_ids) > 1) {
                 // Group the subjects by 'subject_with_name' (create a composite name if needed)
                 $groupedBySubjectName = $subjects->groupBy(function ($subject) {
                     return $subject->subject->name . ' (' . $subject->subject->type . ')'; // Creating 'subject_with_name'
                 });
-    
+
                 // Filter to only keep subjects that appear in more than one section (common subjects)
                 $commonSubjects = $groupedBySubjectName->filter(function ($group) {
                     return $group->count() > 1;
                 });
-    
+
                 // Flatten the result to get a list of common subjects
                 $commonSubjectsList = $commonSubjects->flatten(1);
-    
+
                 // Remove duplicates based on 'subject_with_name' and reset array keys
                 $commonSubjectsList = $commonSubjectsList->unique(function ($subject) {
                     return $subject->subject->name . ' (' . $subject->subject->type . ')';  // Unique by 'subject_with_name'
                 })->values();
-    
+
                 // Assign to subjects
                 $subjects = $commonSubjectsList;
             }
-            
+
             return ResponseService::successResponse('Teacher Subject Fetched Successfully.', $subjects->toArray());
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e);
@@ -309,7 +309,7 @@ class TeacherApiController extends Controller
             "file.*"                => ['nullable', new DynamicMimes, new MaxFileSize($file_upload_size_limit) ],
         ],[
             'file.*' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
 
@@ -317,7 +317,7 @@ class TeacherApiController extends Controller
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            
+
             DB::beginTransaction();
             $sessionYear = $this->cache->getDefaultSessionYear();
 
@@ -337,7 +337,7 @@ class TeacherApiController extends Controller
             foreach ($section_ids as $section_id) {
                 $assignmentData = array_merge($assignmentData, ['class_section_id' => $section_id]);
             }
-          
+
             // Store the assignment data
             $assignment = $this->assignment->create($assignmentData);
 
@@ -351,53 +351,53 @@ class TeacherApiController extends Controller
                 $assignmentCommonData['class_subject_id'] = $classSubjects->id;
                 $this->assignmentCommon->create($assignmentCommonData);
             }
-        
+
             // Handle File Upload
             if ($request->hasFile('file')) {
                 $fileData = [];
-        
+
                 $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-                
+
                 foreach ($request->file('file') as $file_upload) {
                     $tempFileData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
                         'file_name'  => $file_upload->getClientOriginalName(),
                         'type'       => 1,
-                        'file_url'   => $file_upload, 
+                        'file_url'   => $file_upload,
                     );
                     $fileData[] = $tempFileData;
                 }
-        
+
                 // Store the files data
                 $this->files->createBulk($fileData);
             }
-        
+
             // Handle URL Upload
             if ($request->add_url) {
                 $urlData = [];
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-        
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']);
-        
+
                     $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-        
+
                     $tempUrlData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
                     $urlData[] = $tempUrlData;
                 }
-            
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }
-            
+
 
             $subjectName = $this->subject->builder()->select('name')->where('id', $request->subject_id)->pluck('name')->first();
             $title = 'New assignment added in ' . $subjectName;
@@ -458,7 +458,7 @@ class TeacherApiController extends Controller
                 'session_year_id'             => $sessionYear->id,
                 'edited_by'                   => Auth::user()->id,
             );
-            
+
             $section_ids = is_array($request->class_section_id) ? $request->class_section_id : [$request->class_section_id];
             foreach ($section_ids as $section_id) {
                 $assignmentData = array_merge($assignmentData, ['class_section_id' => $section_id]);
@@ -487,26 +487,26 @@ class TeacherApiController extends Controller
 
             if ($request->add_url) {
                 $urlData = array(); // Empty URL data array
-            
+
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-            
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']); // Extract the file name from the URL
-            
+
                     $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-            
+
                     $tempUrlData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
-            
+
                     $urlData[] = $tempUrlData; // Store temp URL data in the array
                 }
-            
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }
@@ -685,18 +685,18 @@ class TeacherApiController extends Controller
                 'file_data.*.type'      => 'required|in:file_upload,youtube_link,video_upload,other_link',
                 'file_data.*.name'      => 'required_with:file_data.*.type',
                 'file_data.*.thumbnail' => 'required_if:file_data.*.type,youtube_link,video_upload,other_link',
-        
+
                 'file_data.*.link' => [
                     'nullable',
                     'required_if:file_data.*.type,youtube_link,other_link',
-                    new YouTubeUrl, 
+                    new YouTubeUrl,
                 ],
-                
+
                 'file_data.*.link' => [
                     'nullable',
                     'required_if:file_data.*.type,other_link',
                     'url',
-                    
+
                 ],
 
                 'file_data.*.file' => [
@@ -778,7 +778,7 @@ class TeacherApiController extends Controller
             $title = "Lesson Alert !!!";
             $body = 'Lesson Updated for ' . $subjectName;
             $type = "lesson";
-           
+
             send_notification($user, $title, $body, $type);
 
             DB::commit();
@@ -801,7 +801,7 @@ class TeacherApiController extends Controller
         ResponseService::noFeatureThenSendJson('Lesson Management');
         ResponseService::noPermissionThenSendJson('lesson-edit');
         $file_upload_size_limit = $this->cache->getSystemSettings('file_upload_size_limit');
-       
+
         $validator = Validator::make($request->all(), [
             'lesson_id'        => 'required|numeric',
             'name'             => 'required',
@@ -817,7 +817,7 @@ class TeacherApiController extends Controller
             'file.*.link'      => 'required_if:file.*.type,youtube_link',
         ],[
             'file.*.file' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
         if ($validator->fails()) {
@@ -835,14 +835,14 @@ class TeacherApiController extends Controller
         }
         try {
             DB::beginTransaction();
-            
+
             $lessonData = [];
-            
+
             $section_ids = is_array($request->class_section_id) ? $request->class_section_id : [$request->class_section_id];
             foreach ($section_ids as $section_id) {
                 $lessonData = array_merge($request->all(), ['class_section_id' => $section_id]);
             }
-            
+
             $lesson = $this->lesson->update($request->lesson_id, $lessonData);
 
             //Add the new Files
@@ -907,9 +907,9 @@ class TeacherApiController extends Controller
                         $tempFileData['created_at'] = date('Y-m-d H:i:s');
                         $tempFileData['updated_at'] = date('Y-m-d H:i:s');
 
-                       
+
                         $this->files->updateOrCreate(['id' => $file['id'] ?? null ], $tempFileData);
-                        
+
                     }
                 }
             }
@@ -919,9 +919,9 @@ class TeacherApiController extends Controller
             $title = "Lesson Alert !!!";
             $body = 'Lesson Updated for ' . $subjectName->subject->name;
             $type = "lesson";
-           
+
             send_notification($user, $title, $body, $type);
-            
+
             DB::commit();
             ResponseService::successResponse('Data Updated Successfully');
         } catch (Throwable $e) {
@@ -969,7 +969,7 @@ class TeacherApiController extends Controller
             // $sql = $this->topic->builder()->with('lesson_topics.class_section', 'lesson_topics.class_subject.subject', 'file');
             // $data = $sql->where('lesson_id', $request->lesson_id)->orderBy('id', 'DESC')->get();
             $sql = $this->topic->builder()->with('class_section', 'class_subject.subject', 'file');
-            
+
             $sql = $sql->whereHas('topic_commons', function ($q) use ($request) {
                 $q->where('lesson_id', $request->lesson_id);
             });
@@ -1000,14 +1000,14 @@ class TeacherApiController extends Controller
             'file_data.*.link' => [
                     'nullable',
                     'required_if:file_data.*.type,youtube_link,other_link',
-                    new YouTubeUrl, 
+                    new YouTubeUrl,
                 ],
-                
+
                 'file_data.*.link' => [
                     'nullable',
                     'required_if:file_data.*.type,other_link',
                     'url',
-                    
+
                 ],
 
                 'file_data.*.file' => [
@@ -1070,7 +1070,7 @@ class TeacherApiController extends Controller
                 $lessonTopicCommonData['class_section_id'] = $section_id;
                 $lessonTopicCommonData['class_subject_id'] = $classSubjects->id;
                 $this->topicCommon->create($lessonTopicCommonData);
-            }   
+            }
 
             // Create a file model instance
             if (!empty($lessonTopicFileData)) {
@@ -1087,11 +1087,11 @@ class TeacherApiController extends Controller
             $user = $this->student->builder()->with('user')->where('class_section_id', $request->class_section_id)->pluck('user_id');
             $lesson = $this->lesson->builder()->where('id', $request->lesson_id)->pluck('name')->first();
             $subjectName = $this->subject->builder()->select('name')->where('id', $request->class_subject_id)->pluck('name')->first();
-           
+
             $title = 'Topic Alert !!!';
             $body = 'A new topic has been added to the lesson "' . $lesson . '" under the subject "' . $subjectName . '".';
             $type = "lesson";
-           
+
             send_notification($user, $title, $body, $type);
 
             DB::commit();
@@ -1129,7 +1129,7 @@ class TeacherApiController extends Controller
             'file.*.link'      => 'required_if:file.*.type,youtube_link,other_link',
         ],[
             'file.*.file' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
         if ($validator->fails()) {
@@ -1215,11 +1215,11 @@ class TeacherApiController extends Controller
             $user = $this->student->builder()->with('user')->where('class_section_id', $request->class_section_id)->pluck('user_id');
             $lesson = $this->lesson->builder()->where('id', $request->lesson_id)->pluck('name')->first();
             $subjectName = $this->subject->builder()->select('name')->where('id', $request->class_subject_id)->pluck('name')->first();
-           
+
             $title = 'Topic Alert !!!';
             $body = 'A new topic has been updated for the lesson "' . $lesson . '" under the subject "' . $subjectName . '".';
             $type = "lesson";
-           
+
             send_notification($user, $title, $body, $type);
 
             DB::commit();
@@ -1428,7 +1428,7 @@ class TeacherApiController extends Controller
             'add_url' => trans('The provided link must be a valid URL.'),
             'file.*.mimes' => trans('The file must be a file of type: jpeg, png, pdf.'),
         ]);
-        
+
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
@@ -1489,7 +1489,7 @@ class TeacherApiController extends Controller
                         'class_section_id'  => $section_id,
                     ];
                 }
-        
+
                 $this->announcementClass->create($announcementClassData);
             }
 
@@ -1516,26 +1516,26 @@ class TeacherApiController extends Controller
 
             if ($request->add_url) {
                 $urlData = array(); // Empty URL data array
-            
+
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-            
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']); // Extract the file name from the URL
                     $fileInstance = $this->files->model(); // Create A File Model Instance
                     $announcementModelAssociate = $fileInstance->modal()->associate($announcement);
-            
+
                     $tempUrlData = array(
                         'modal_type' => $announcementModelAssociate->modal_type,
                         'modal_id'   => $announcementModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
-            
+
                     $urlData[] = $tempUrlData; // Store temp URL data in the array
                 }
-            
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }
@@ -1674,26 +1674,26 @@ class TeacherApiController extends Controller
 
             if ($request->add_url) {
                 $urlData = array(); // Empty URL data array
-            
+
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-            
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']); // Extract the file name from the URL
                     $fileInstance = $this->files->model();
-                    $announcementModelAssociate = $fileInstance->modal()->associate($announcement); 
-            
+                    $announcementModelAssociate = $fileInstance->modal()->associate($announcement);
+
                     $tempUrlData = array(
                         'modal_type' => $announcementModelAssociate->modal_type,
                         'modal_id'   => $announcementModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
-            
+
                     $urlData[] = $tempUrlData; // Store temp URL data in the array
                 }
-            
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }
@@ -1834,12 +1834,12 @@ class TeacherApiController extends Controller
                         'type'             => $request->attendance[$i]['type'],
                         'date'             => date('Y-m-d', strtotime($request->date)),
                     ];
-    
+
                     if ($request->attendance[$i]['type'] == 0) {
                         $student_ids[] = $request->attendance[$i]['student_id'];
                     }
-    
-    
+
+
                     $attendance = $this->attendance->builder()->where('class_section_id', $request->class_section_id)->where('student_id', $request->attendance[$i]['student_id'])->whereDate('date', $date)->first();
                     if ($attendance) {
                         $this->attendance->update($attendance->id, $attendanceData);
@@ -1847,18 +1847,18 @@ class TeacherApiController extends Controller
                         $this->attendance->create($attendanceData);
                     }
                 }
-    
+
                 if ($request->absent_notification) {
                     $user = $this->student->builder()->whereIn('user_id', $student_ids)->pluck('guardian_id')->toArray();
                     $date = Carbon::parse(date('Y-m-d', strtotime($request->date)))->format('F jS, Y');
                     $title = 'Absent';
                     $body = 'Your child is absent on ' . $date;
                     $type = "attendance";
-    
+
                     send_notification($user, $title, $body, $type);
                 }
             }
-            
+
             DB::commit();
             ResponseService::successResponse('Data Stored Successfully');
         } catch (Throwable $e) {
@@ -1942,7 +1942,7 @@ class TeacherApiController extends Controller
                     $sql = $sql->has('student')->orderBy('id')->get();
                 }
 
-                // 
+                //
                 if ($request->exam_id) {
 
                     $validator = Validator::make($request->all(), ['class_subject_id' => 'required']);
@@ -2611,7 +2611,7 @@ class TeacherApiController extends Controller
     private function prepareFileData($file)
     {
         if ($file['type']) {
-           
+
             $tempFileData = [
                 'file_name'  => $file['name']
             ];

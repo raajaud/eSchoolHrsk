@@ -111,7 +111,7 @@ class StudentApiController extends Controller {
             ResponseService::validationError($validator->errors()->first());
         }
 
-        $school = School::on('mysql')->where('code',$request->school_code)->first();
+        $school = School::on('mysql')->where('code', env('SCHOOLCODE'))->first();
 
         if ($school) {
             DB::setDefaultConnection('school');
@@ -176,7 +176,7 @@ class StudentApiController extends Controller {
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            $schoolCode = $request->school_code;
+            $schoolCode = env('SCHOOLCODE');
             if ($schoolCode) {
                 $school = School::on('mysql')->where('code',$schoolCode)->first();
 
@@ -186,11 +186,11 @@ class StudentApiController extends Controller {
                     DB::purge('school');
                     DB::connection('school')->reconnect();
                     DB::setDefaultConnection('school');
-                
+
                     $user = $this->user->builder()->whereHas('student', function ($query) use ($request) {
                         $query->where('admission_no', $request->gr_no);
                     })->whereDate('dob', '=', date('Y-m-d', strtotime($request->dob)))->first();
-        
+
                     if ($user) {
                         /*NOTE : Revert this if needed */
                         //$this->user->update($user->id, ['reset_request' => 1,'school_id' => $user->school_id]);
@@ -204,7 +204,7 @@ class StudentApiController extends Controller {
                 }
             } else {
                 return response()->json(['message' => 'Unauthenticated'], 400);
-            }   
+            }
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e);
             ResponseService::errorResponse();
@@ -397,7 +397,7 @@ class StudentApiController extends Controller {
             'files.*'       => ['mimes:jpeg,png,jpg,gif,svg,webp,pdf,doc,docx,xml', new MaxFileSize($file_upload_size_limit) ]
         ],[
             'files.*' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
 
@@ -1408,12 +1408,12 @@ class StudentApiController extends Controller {
                     'settings'     => $settings,
                     'features'     => (count($features) > 0) ? $features : (object)[]
                 ];
-                ResponseService::successResponse('Settings Fetched Successfully.', $data);    
+                ResponseService::successResponse('Settings Fetched Successfully.', $data);
             } else {
                 ResponseService::errorResponse(trans('your_account_has_been_deactivated_please_contact_admin'), null, config('constants.RESPONSE_CODE.INACTIVATED_USER'));
             }
-            
-            
+
+
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e);
             ResponseService::errorResponse();

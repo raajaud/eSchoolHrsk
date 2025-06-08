@@ -106,12 +106,12 @@ class ParentApiController extends Controller {
             'email.email' => 'Please provide a valid email address.',
             'password.required' => 'The password field cannot be empty.',
         ]);
-        
+
         if ($validator->fails()) {
             ResponseService::validationError($validator->errors()->first());
         }
 
-        $school = School::on('mysql')->where('code',$request->school_code)->first();
+        $school = School::on('mysql')->where('code',env('SCHOOLCODE'))->first();
 
         if ($school) {
             DB::setDefaultConnection('school');
@@ -128,7 +128,7 @@ class ParentApiController extends Controller {
             'password' => $request->password
         ])) {
             // $auth = Auth::user()->load('child.user', 'child.class_section.class', 'child.class_section.section', 'child.class_section.medium', 'child.user.school');
-            
+
             // Only active child
             $auth = Auth::user()->load(['child' => function($q) {
                 $q->whereHas('user.student', function($q) {
@@ -149,9 +149,9 @@ class ParentApiController extends Controller {
 
             // session(['database_name' => $school->database_name]);
             $token = $auth->createToken($auth->first_name)->plainTextToken;
-            // $token = $auth->createToken('API Token', ['school_code' => $request->school_code])->plainTextToken;
+            // $token = $auth->createToken('API Token', ['school_code' => env('SCHOOLCODE')])->plainTextToken;
             $user = $auth;
-            $request->headers->set('school_code',$request->school_code);
+            $request->headers->set('school_code',env('SCHOOLCODE'));
             ResponseService::successResponse('User logged-in!', new UserDataResource($user), ['token' => $token], config('constants.RESPONSE_CODE.LOGIN_SUCCESS'));
         } else {
             ResponseService::errorResponse('Invalid Login Credentials', null, config('constants.RESPONSE_CODE.INVALID_LOGIN'));
@@ -1460,14 +1460,14 @@ class ParentApiController extends Controller {
                     $amount += $dueChargesAmount;
                 }
             }
-            
+
             // if advance amount is greater than 0 and less than amount then add advance amount to amount
             if($request->advance > 0 && $request->advance < $amount) {
                 $finalAmount = $request->advance;
             } else {
                 $finalAmount = $amount;
             }
-         
+
             //Add Payment Data to Payment Transactions Table
             $paymentTransactionData = $this->paymentTransaction->create([
                 'user_id'         => $parentId,
@@ -1477,7 +1477,7 @@ class ParentApiController extends Controller {
                 'school_id'       => $schoolId,
                 'order_id'        => null
             ]);
-            
+
             $paymentIntent = PaymentService::create($request->payment_method, $schoolId)->createPaymentIntent(round($finalAmount, 2), [
                 'user_id'                => Auth::user()->id,
                 'name'                   => Auth::user()->full_name,
@@ -1504,7 +1504,7 @@ class ParentApiController extends Controller {
                 DB::commit();
 
                 \Log::info("Payment Intent:", ['payment_intent' => $paymentIntent]);
-                
+
                 // Return only the payment_link for Flutterwave
                 if($request->payment_method == "Flutterwave") {
                     ResponseService::successResponse("", [
@@ -1630,7 +1630,7 @@ class ParentApiController extends Controller {
                 DB::commit();
 
                 \Log::info("Payment Intent:", ['payment_intent' => $paymentIntent]);
-                
+
                 // Return only the payment_link for Flutterwave
                 if($request->payment_method == "Flutterwave") {
                     ResponseService::successResponse("", [
