@@ -99,7 +99,7 @@ class ParentApiController extends Controller {
     #[NoReturn] public function login(Request $request) {
 
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email' => 'required',
             'password' => 'required',
         ], [
             'email.required' => 'The email field cannot be empty.',
