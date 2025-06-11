@@ -111,7 +111,7 @@ class ParentApiController extends Controller {
             ResponseService::validationError($validator->errors()->first());
         }
 
-        $school = School::on('mysql')->where('code',env('SCHOOLCODE'))->first();
+        $school = School::on('mysql')->where('code',1234567890)->first();
 
         if ($school) {
             DB::setDefaultConnection('school');
@@ -122,7 +122,10 @@ class ParentApiController extends Controller {
         } else {
             ResponseService::errorResponse('Invalid Login Credentials', null, config('constants.RESPONSE_CODE.INVALID_LOGIN'));
         }
-
+        dd(Auth::attempt([
+            'mobile'    => $request->email,
+            'password' => $request->password
+        ]));
         if (Auth::attempt([
             'mobile'    => $request->email,
             'password' => $request->password

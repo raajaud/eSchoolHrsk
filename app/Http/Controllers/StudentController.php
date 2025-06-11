@@ -214,7 +214,7 @@ class StudentController extends Controller {
     {
         $users = User::all();
         foreach ($users as $user) {
-            $user->password = Hash::make($this->makeStudentPassword($user->mobile));
+            $user->password = Hash::make($user->mobile);
             $user->save();
         }
     }
