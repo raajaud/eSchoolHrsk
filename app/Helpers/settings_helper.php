@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Grade;
+use App\Models\PaymentTransaction;
 use App\Repositories\Grades\GradesInterface;
 use App\Repositories\SchoolSetting\SchoolSettingInterface;
 use App\Services\CachingService;
@@ -262,7 +263,7 @@ function getCategoryAdjustedFee($row)
     )->data;
     // dd($categoryUsagePeriod);
     $admission_date = $row->student->admission_date;
-
+    // dd($admission_date);
     $class_id = $row->student->class_section_id;
     $books = [
         ['id' => 8, 'name' => 'Nursery', 'price' => 1910],
@@ -407,9 +408,15 @@ function getCategoryAdjustedFee($row)
     // dd($row);
 
     return [
-        'paid' => isset($row->fees_paid->amount) ? $row->fees_paid->amount : 0,
+        'paid' => totalPaid($row) ?? 0,
         'total' => $total,
         'breakup' => $breakup,
     ];
 
+}
+
+
+function totalPaid($row)
+{
+    return PaymentTransaction::where('user_id', $row->id)->sum('amount');
 }

@@ -673,7 +673,7 @@ class FeesController extends Controller
 
             $sql = $this->user->builder()->role('Student')->select('id', 'first_name', 'last_name')->with([
                 'student'          => function ($query) {
-                    $query->select('id', 'class_section_id', 'user_id')->with(['class_section' => function ($query) {
+                    $query->select('id', 'class_section_id', 'user_id', 'admission_date')->with(['class_section' => function ($query) {
                         $query->select('id', 'class_id', 'section_id', 'medium_id')->with('class:id,name', 'section:id,name', 'medium:id,name');
                     }]);
                 }, 'optional_fees' => function ($query) {
@@ -849,9 +849,12 @@ class FeesController extends Controller
                     $tempRow['payment_method'] = $row->fees_paid->compulsory_fee[0]->mode;
                 }
                 $feeDetails = getCategoryAdjustedFee($row);
+                // if()
+                // dd($tempRow['fees']);
                 if($feeDetails){
-                    $tempRow['fees']['paid_amount'] = $feeDetails['paid'];
+                    $tempRow['fees']['total_optional_fees'] = $feeDetails['paid'];
                     $tempRow['fees']['total_compulsory_fees'] = $feeDetails['total'];
+                    $tempRow['payment_method'] = $feeDetails['total']-$feeDetails['paid'];
                 }
 
                 $tempRow['operate'] = $operate;
@@ -917,7 +920,7 @@ class FeesController extends Controller
 
         $student = $this->user->builder()->role('Student')->select('id', 'first_name', 'last_name')
             ->with(['student' => function ($query) {
-                $query->select('id', 'class_section_id', 'user_id', 'guardian_id')->with(['class_section' => function ($query) {
+                $query->select('id', 'class_section_id', 'user_id', 'guardian_id', 'admission_date')->with(['class_section' => function ($query) {
                     $query->select('id', 'class_id', 'section_id', 'medium_id')->with('class:id,name', 'section:id,name', 'medium:id,name');
                 }]);
             }, 'fees_paid'    => function ($q) use ($feesID) {
@@ -925,6 +928,10 @@ class FeesController extends Controller
             }, 'compulsory_fees.advance_fees'])->findOrFail($studentID);
 
         $isFullyPaid = false;
+        $feeDetails = getCategoryAdjustedFee($student);
+        $fees->adjusted_compulsory_fees = $feeDetails['total'];
+        $fees->paid = $feeDetails['paid'];
+        $fees->fees_details = $feeDetails['breakup'];
         if (!empty($student->fees_paid) && $student->fees_paid->is_fully_paid) {
             // ResponseService::successRedirectResponse(route('fees.paid.index'), 'Compulsory Fees Already Paid');
             $isFullyPaid = true;
@@ -979,8 +986,13 @@ class FeesController extends Controller
             $due_charges = $fees->due_charges_amount;
         }
 
+        $sql = $this->paymentTransaction->builder()->with('user:id,first_name,last_name')->where('user_id', $studentID);
+
+        $total = $sql->count();
+        $logs = $sql->get();
+
         $currencySymbol = $this->cache->getSchoolSettings('currency_symbol');
-        return view('fees.pay-compulsory', compact('fees', 'student', 'oneInstallmentPaid', 'currencySymbol','isFullyPaid','due_charges','installment_status'));
+        return view('fees.pay-compulsory', compact('fees', 'student', 'oneInstallmentPaid', 'currencySymbol','isFullyPaid','due_charges','installment_status', 'logs'));
     }
 
     public function payCompulsoryFeesStore(Request $request)

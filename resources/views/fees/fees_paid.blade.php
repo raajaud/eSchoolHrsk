@@ -122,7 +122,7 @@
                                         <option value="0">{{ __('unpaid') }}</option>
                                         <option value="1">{{ __('paid') }}</option>
                                         <option value="2">{{ __('Partial Paid') }}</option>
-                                        
+
                                     </select>
                                 </div>
                             </div>
@@ -138,7 +138,7 @@
                                     <label for="filter_gateway" class="filter-menu">{{ __('payment_type') }}</label>
                                     {!! Form::select('payment_type', ['' => __('All'), 'cash_cheque' => __('cash_cheque'),'stripe_razorpay' => __('stripe_razorpay')], 0, ['class' => 'form-control payment-gateway' ,'id' => 'filter_gateway']) !!}
                                 </div> --}}
-                                
+
                                 <div class="form-group col-md-3">
                                     <label for="filter_online_offline_payment" class="filter-menu">{{ __('online_offline_payment') }}</label>
                                     <select name="filter_online_offline_payment" id="filter_online_offline_payment" class="form-control select2">
@@ -166,9 +166,9 @@
                                     <th scope="col" data-field="student.id" data-sortable="false" data-visible="false" data-align="center">{{ __('Student Id') }}</th>
                                     <th scope="col" data-field="full_name" data-sortable="false" data-align="center"> {{ __('Student Name') }}</th>
                                     <th scope="col" data-field="student.class_section.full_name" data-sortable="false" data-align="center">{{ __('Class') }}</th>
-                                    <th scope="col" data-field="fees.total_compulsory_fees" data-sortable="false" data-align="center">{{ __('Compulsory Fees') }}</th>
-                                    <th scope="col" data-field="fees.total_optional_fees" data-sortable="false" data-align="center">{{ __('Optional Fees') }}</th>
-                                    <th scope="col" data-field="payment_method" data-sortable="false" data-align="center"> {{ __('Payment Method') }}</th>
+                                    <th scope="col" data-field="fees.total_compulsory_fees" data-sortable="false" data-align="center">Total Fees</th>
+                                    <th scope="col" data-field="fees.total_optional_fees" data-sortable="false" data-align="center">Total Paid</th>
+                                    <th scope="col" data-field="payment_method" data-sortable="false" data-align="center"> Dues</th>
                                     <th scope="col" data-field="fees_status" data-sortable="false" data-formatter="feesPaidStatusFormatter" data-align="center"> {{ __('Fees Status') }}</th>
                                     <th scope="col" data-field="fees_paid.date" data-formatter="dateFormatter" data-sortable="false" data-align="center">{{ __('Date') }}</th>
                                     <th scope="col" data-field="paid_amount" data-sortable="false">{{ __('paid_amount') }}</th>
@@ -185,7 +185,7 @@
 @section('js')
     <script>
 
-        $('#filter_paid_status').change(function (e) { 
+        $('#filter_paid_status').change(function (e) {
             e.preventDefault();
             $('.paid-filter').hide(500);
 
