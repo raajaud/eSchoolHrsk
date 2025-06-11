@@ -128,7 +128,6 @@ class ParentApiController extends Controller {
             'password' => $request->password
         ])) {
             // $auth = Auth::user()->load('child.user', 'child.class_section.class', 'child.class_section.section', 'child.class_section.medium', 'child.user.school');
-
             // Only active child
             $auth = Auth::user()->load(['child' => function($q) {
                 $q->whereHas('user.student', function($q) {
