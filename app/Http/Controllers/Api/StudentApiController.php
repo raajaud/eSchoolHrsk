@@ -124,7 +124,7 @@ class StudentApiController extends Controller {
         }
 
         $user = User::withTrashed()
-        ->where('mobile', $request->gr_number)
+        ->where('email', $request->gr_number)
         ->first();
 
         if ($user && Hash::check($request->password, $user->password)) {
@@ -134,7 +134,7 @@ class StudentApiController extends Controller {
             }
         }
 
-        if (Auth::attempt(['mobile' => $request->gr_number, 'password' => $request->password, 'status' => 1])) {
+        if (Auth::attempt(['email' => $request->gr_number, 'password' => $request->password, 'status' => 1])) {
             //Here Email Field is referenced as a GR Number for Student
             $auth = Auth::user();
             // Check role
@@ -176,7 +176,7 @@ class StudentApiController extends Controller {
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            $schoolCode = env('SCHOOLCODE');
+            $schoolCode = $request->school_code;
             if ($schoolCode) {
                 $school = School::on('mysql')->where('code',$schoolCode)->first();
 
