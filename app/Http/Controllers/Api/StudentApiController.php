@@ -124,9 +124,11 @@ class StudentApiController extends Controller {
         }
 
         $user = User::withTrashed()
-        ->where('email', $request->gr_number)
+        ->where('mobile', $request->gr_number)
+        ->where('status', 1)
+        ->whereNotNull('school_id')
         ->first();
-
+        // dd($user->school);
         if ($user && Hash::check($request->password, $user->password)) {
             if ($user->trashed()) {
                 // User is soft-deleted, handle accordingly
@@ -134,7 +136,8 @@ class StudentApiController extends Controller {
             }
         }
 
-        if (Auth::attempt(['email' => $request->gr_number, 'password' => $request->password, 'status' => 1])) {
+        if ($user && Hash::check($request->password, $user->password)) {
+            Auth::login($user);
             //Here Email Field is referenced as a GR Number for Student
             $auth = Auth::user();
             // Check role
@@ -142,6 +145,7 @@ class StudentApiController extends Controller {
             // if (!$auth->hasRole('Student')) {
             //     ResponseService::errorResponse('Invalid Login Credentials', null, config('constants.RESPONSE_CODE.INVALID_LOGIN'));
             // }
+            // dd($auth);
             // Check school status is activated or not
             if ($auth->school->status == 0) {
                 ResponseService::errorResponse('Your account has been deactivated', null, config('constants.RESPONSE_CODE.INVALID_LOGIN'));
