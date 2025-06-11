@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\StudentDataExport;
 use App\Imports\StudentsImport;
 use App\Models\School;
+use App\Models\User;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
 use App\Repositories\ClassSection\ClassSectionInterface;
 use App\Repositories\FormField\FormFieldsInterface;
@@ -63,11 +64,11 @@ class StudentController extends Controller {
         $class_sections = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
 
         if(Auth::user()->school_id) {
-            $extraFields = $this->formFields->defaultModel()->where('user_type', 1)->orderBy('rank')->get();    
+            $extraFields = $this->formFields->defaultModel()->where('user_type', 1)->orderBy('rank')->get();
         } else {
             $extraFields = $this->formFields->defaultModel()->orderBy('rank')->get();
         }
-       
+
         $sessionYears = $this->sessionYear->all();
         $features = FeaturesService::getFeatures();
         return view('students.details', compact('class_sections', 'extraFields', 'sessionYears', 'features'));
@@ -81,7 +82,7 @@ class StudentController extends Controller {
         $admission_no = $sessionYear->name .'0'. Auth::user()->school_id . '0' . ($get_student + 1);
 
         if(Auth::user()->school_id) {
-            $extraFields = $this->formFields->defaultModel()->where('user_type', 1)->orderBy('rank')->get();    
+            $extraFields = $this->formFields->defaultModel()->where('user_type', 1)->orderBy('rank')->get();
         } else {
             $extraFields = $this->formFields->defaultModel()->orderBy('rank')->get();
         }
@@ -136,7 +137,7 @@ class StudentController extends Controller {
                 // If prepaid plan check student limit
                 if ($subscription && $subscription->package_type == 0) {
                     $status = $this->subscriptionService->check_user_limit($subscription, "Students");
-                    
+
                     if (!$status) {
                         ResponseService::errorResponse('You reach out limits');
                     }
@@ -206,6 +207,15 @@ class StudentController extends Controller {
             DB::rollBack();
             ResponseService::logErrorResponse($e, "Student Controller -> Update method");
             ResponseService::errorResponse();
+        }
+    }
+
+    public function updatePasswords()
+    {
+        $users = User::all();
+        foreach ($users as $user) {
+            $user->password = Hash::make($this->makeStudentPassword($user->mobile));
+            $user->save();
         }
     }
 
@@ -318,7 +328,7 @@ class StudentController extends Controller {
             $tempRow['eng_guardian_gender'] = $guardian_gender;
             // $tempRow['user.dob'] = format_date($row->user->dob);
             // $tempRow['admission_date'] = format_date($row->admission_date);
-            
+
             // $tempRow['extra_fields'] = $row->user->extra_student_details()->has('form_field')->with('form_field')->get();
             $tempRow['extra_fields'] = $row->user->extra_student_details;
             foreach ($row->user->extra_student_details as $key => $field) {
@@ -335,7 +345,7 @@ class StudentController extends Controller {
                 }
                 $tempRow[$field->form_field->name] = $data;
             }
-            
+
             $tempRow['operate'] = $operate;
             $rows[] = $tempRow;
         }
@@ -367,13 +377,13 @@ class StudentController extends Controller {
                 // If prepaid plan check student limit
                 if ($subscription && $subscription->package_type == 0) {
                     $status = $this->subscriptionService->check_user_limit($subscription, "Students");
-                    
+
                     if (!$status) {
                         ResponseService::errorResponse('You reach out limits');
                     }
                 }
             }
-                        
+
             $this->user->builder()->where('id', $userId)->withTrashed()->update(['status' => $user->status == 0 ? 1 : 0, 'deleted_at' => $user->status == 1 ? now() : null]);
             DB::commit();
             ResponseService::successResponse('Data Updated Successfully');
@@ -396,7 +406,7 @@ class StudentController extends Controller {
                     // If prepaid plan check student limit
                     if ($subscription && $subscription->package_type == 0) {
                         $status = $this->subscriptionService->check_user_limit($subscription,"Students");
-                        
+
                         if (!$status) {
                             ResponseService::errorResponse('You reach out limits');
                         }
@@ -418,10 +428,10 @@ class StudentController extends Controller {
         ResponseService::noPermissionThenSendJson('student-delete');
         try {
             DB::beginTransaction();
-            
+
             // Get student record with guardian
             $student = $this->student->builder()->with('guardian')->where('user_id', $id)->first();
-            
+
             if ($student && $student->guardian) {
                 // Count total students with same guardian_id
                 $guardianStudentCount = $this->student->builder()->where('guardian_id', $student->guardian_id)->count();
@@ -679,10 +689,10 @@ class StudentController extends Controller {
     public function update_profile()
     {
         ResponseService::noPermissionThenRedirect('student-edit');
-        
+
         $class_sections = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
         return view('students.add_bulk_profile',compact('class_sections'));
-        
+
     }
 
     public function list($id = null, Request $request)
@@ -721,13 +731,13 @@ class StudentController extends Controller {
             $sql = $sql->orderBy('roll_number', 'ASC');
             $res = $sql->get();
         }
-        
+
         $bulkData = array();
         $bulkData['total'] = $total;
         $rows = array();
         $no = 1;
         foreach ($res as $row) {
-            
+
             $tempRow = $row->toArray();
             $tempRow['no'] = $no++;
             $rows[] = $tempRow;
@@ -763,7 +773,7 @@ class StudentController extends Controller {
             $this->user->upsertProfile($data,['id'],['image']);
             // $this->user->upsert($data,['id'],['image']);
             ResponseService::successResponse('Profile Updated Successfully');
-            
+
         } catch (\Throwable $th) {
             ResponseService::logErrorResponse($th);
             ResponseService::errorResponse();
@@ -822,11 +832,11 @@ class StudentController extends Controller {
 
 
             $settings['page_height'] = ($settings['page_height'] * 3.7795275591).'px';
-            
+
             $pdf = PDF::loadView('students.students_id_card',compact('students','sessionYear','valid_until','settings'));
             $pdf->setPaper($customPaper);
 
-            
+
             return $pdf->stream();
             return view('students.id_card_pdf');
         } catch (\Throwable $th) {
@@ -844,28 +854,28 @@ class StudentController extends Controller {
                 $fullDomain = $_SERVER['HTTP_HOST'] ?? '';
                 $parts = explode('.', $fullDomain);
                 $subdomain = $parts[0];
-                
+
                 $school = School::on('mysql')->where('domain', $fullDomain)->orwhere('domain', $subdomain)->first();
                 if ($school) {
                     $schoolSettings = $this->cache->getSchoolSettings('*', $school->id);
                 }
             }
-            
+
             $data = explode("storage/", $schoolSettings['horizontal_logo'] ?? '');
                 $schoolSettings['horizontal_logo'] = end($data);
-    
+
             if ($schoolSettings['horizontal_logo'] == null) {
                 $systemSettings = $this->cache->getSystemSettings();
                 $data = explode("storage/", $systemSettings['horizontal_logo'] ?? '');
                 $schoolSettings['horizontal_logo'] = end($data);
             }
-    
+
             $pdf = PDF::loadView('students.admission_form',compact('schoolSettings'));
             return $pdf->stream();
         } catch (\Throwable $th) {
-            
+
         }
-        
+
     }
 
     public function onlineRegistrationIndex()
@@ -873,7 +883,7 @@ class StudentController extends Controller {
         ResponseService::noPermissionThenRedirect('student-list');
         $class_sections = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
         $classes = $this->classSchool->builder()->with('medium','stream')->get();
-     
+
         $extraFields = $this->formFields->defaultModel()->orderBy('rank')->get();
         $sessionYears = $this->sessionYear->all();
         $features = FeaturesService::getFeatures();
@@ -940,19 +950,19 @@ class StudentController extends Controller {
         }
         $sql->skip($offset)->take($limit);
         $res = $sql->get();
-    
-      
+
+
         $bulkData = array();
         $bulkData['total'] = $total;
         $rows = array();
         $no = 1;
         foreach ($res as $row) {
             $operate = '';
-          
+
             if (Auth::user()->can('student-edit')) {
                 $operate .= BootstrapTableService::editButton(route('update-application-status', $row->user->id, ['data-id' => $row->id]));
             }
-             
+
 
             if (Auth::user()->can('student-delete')) {
                 $operate .= BootstrapTableService::trashButton(route('student.trash', $row->user_id));
@@ -981,7 +991,7 @@ class StudentController extends Controller {
                 }
                 $tempRow[$field->form_field->name] = $data;
             }
-            
+
             $tempRow['operate'] = $operate;
             $rows[] = $tempRow;
         }
@@ -1009,7 +1019,7 @@ class StudentController extends Controller {
                     // If prepaid plan check student limit
                     if ($subscription && $subscription->package_type == 0) {
                         $status = $this->subscriptionService->check_user_limit($subscription,"Students");
-                        
+
                         if (!$status) {
                             ResponseService::errorResponse('You reach out limits');
                         }
@@ -1027,9 +1037,9 @@ class StudentController extends Controller {
                     $guardian = $this->user->guardian()->where('id', $student->guardian_id)->firstOrFail();
                     $class = $this->classSchool->builder()->where('id', $student->class_id)->with('medium','stream')->first();
                     $class_name = $class->full_name;
-                   
+
                     $userService->sendApplicationRejectEmail($user,  $class_name, $guardian);
-                    
+
                 }
             }
             DB::commit();
@@ -1051,10 +1061,10 @@ class StudentController extends Controller {
         ]);
 
         try {
-          
+
             $userService = app(UserService::class);
             DB::beginTransaction();
-            
+
             $user = $this->user->findTrashedById($request->edit_user_id);
             $student = $this->student->builder()->where('user_id', $request->edit_user_id)->first();
             if ($user->status == 0) {
@@ -1062,7 +1072,7 @@ class StudentController extends Controller {
                 // If prepaid plan check student limit
                 if ($subscription && $subscription->package_type == 0) {
                     $status = $this->subscriptionService->check_user_limit($subscription,"Students");
-                    
+
                     if (!$status) {
                         ResponseService::errorResponse('You reach out limits');
                     }
@@ -1079,11 +1089,11 @@ class StudentController extends Controller {
                 $this->student->builder()->where('user_id', $request->edit_user_id)->withTrashed()->update(['application_status' => 0]);
                 $guardian = $this->user->guardian()->where('id', $student->guardian_id)->firstOrFail();
                 $userService->sendApplicationRejectEmail($user, $student, $guardian);
-                
+
             }
-             
-                
-            
+
+
+
             DB::commit();
             ResponseService::successResponse("Status Updated Successfully");
         } catch (Throwable $e) {
@@ -1098,7 +1108,7 @@ class StudentController extends Controller {
             $class_sections = $this->classSection->builder()->where('class_id',$class_id)->with('class', 'class.stream', 'section', 'medium')->get();
             ResponseService::successResponse('Data Fetched Successfully', $class_sections);
         } catch (Throwable $e) {
-            
+
                 ResponseService::logErrorResponse($e, "Student Controller -> getclassSectionByClass method");
                 ResponseService::errorResponse();
         }

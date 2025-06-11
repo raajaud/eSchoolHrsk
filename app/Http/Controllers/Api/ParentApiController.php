@@ -1214,6 +1214,142 @@ class ParentApiController extends Controller {
     }
 
     //Get Fees Details
+    // public function getFees(Request $request) {
+    //     $validator = Validator::make($request->all(), [
+    //         'child_id'        => 'required',
+    //         'session_year_id' => 'nullable|numeric'
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         ResponseService::validationError($validator->errors()->first());
+    //     }
+    //     try {
+    //         $student = Auth::user()->guardianRelationChild()->where('id', $request->child_id)->whereHas('user', function ($q) {
+    //             $q->whereNull('deleted_at');
+    //         })->first();
+
+    //         if (empty($student)) {
+    //             ResponseService::errorResponse("Child's Account is not Active.Contact School Support", NULL, config('constants.RESPONSE_CODE.INACTIVE_CHILD'));
+    //         }
+    //         $classId = $student->class_section->class_id;
+    //         $schoolId = $student->user->school_id;
+
+    //         $currentSessionYear = $this->cache->getDefaultSessionYear($schoolId);
+    //         $sessionYearId = $request->session_year_id ?? $currentSessionYear->id;
+
+    //         $fees = $this->fees->builder()->where('class_id', $classId)
+    //             ->with(['fees_class_type.fees_type',
+    //                     'fees_paid' => function ($query) use ($student) {
+    //                         $query->where(['student_id' => $student->user_id])->with('compulsory_fee.advance_fees', 'optional_fee');
+    //                     }, 'session_year', 'class.medium', 'class.stream'
+    //             ])->where(['session_year_id' => $sessionYearId])->first();
+
+    //         $currentDateTimestamp = new DateTime(date('Y-m-d'));
+
+    //         // foreach ($fees as $fee) {
+    //         //     $feesDateTimestamp = new DateTime($fee->due_date);
+
+    //         //     // Set Optional Fees Data in response
+    //         //     if (count($fee->optional_fees) > 0) {
+    //         //         collect($fee->optional_fees)->map(function ($optionalFees) use ($student) {
+    //         //             $isOptionalFeesPaid = $student->user->optional_fees->first(function ($optionalFeesPaid) use ($optionalFees, $student) {
+    //         //                 return $optionalFeesPaid->fees_class_id == $optionalFees->id && $optionalFeesPaid->student_id == $student->user->id;
+    //         //             });
+    //         //             $optionalFees['is_paid'] = $isOptionalFeesPaid ? true : false;
+    //         //             return $optionalFees;
+    //         //         });
+    //         //     }
+
+
+    //         //     // Set Compulsory Fees Data in response
+    //         //     if (count($fee->compulsory_fees) > 0) {
+    //         //         $fee->is_overdue = $currentDateTimestamp > $feesDateTimestamp; // true/false
+    //         //         collect($fee->compulsory_fees)->map(function ($compulsoryFees) use ($student) {
+    //         //             $isCompulsoryFeesPaid = $student->user->compulsory_fees->first(function ($compulsoryFeesPaid) use ($student) {
+    //         //                 return $compulsoryFeesPaid->type == 'Full Payment' && $compulsoryFeesPaid->student_id == $student->user->id;
+    //         //             });
+    //         //             $compulsoryFees['is_paid'] = $isCompulsoryFeesPaid ? true : false;
+    //         //             return $compulsoryFees;
+    //         //         });
+    //         //     }
+
+    //         //     // Set Installment Data in Response
+    //         //     if (count($fee->installments) > 0) {
+    //         //         $totalFeesAmount = $fee->total_compulsory_fees;
+    //         //         $totalInstallments = count($fee->installments);
+
+    //         //         $previousInstallmentDate = new DateTime('now -1 day');
+    //         //         collect($fee->installments)->map(function ($installment) use ($student, &$totalFeesAmount, &$totalInstallments, $currentDateTimestamp, &$previousInstallmentDate) {
+    //         //             $installmentDueDateTimestamp = new DateTime($installment['due_date']);
+
+    //         //             $installmentPaid = $student->user->compulsory_fees->first(function ($compulsoryFeesPaid) use ($installment, $student) {
+    //         //                 return $compulsoryFeesPaid->type == "Installment Payment" && $compulsoryFeesPaid->installment_id == $installment->id && $compulsoryFeesPaid->student_id == $student->user->id;
+    //         //             });
+
+    //         //             // If installment is not Paid
+    //         //             if (!empty($installmentPaid)) {
+    //         //                 --$totalInstallments;
+    //         //                 $totalFeesAmount -= $installmentPaid->amount;
+    //         //                 $installment['minimum_amount'] = $installmentPaid->amount;
+    //         //                 $installment['maximum_amount'] = $installmentPaid->amount;
+    //         //                 $installment['due_charges_amount'] = $installmentPaid->due_charges;
+    //         //             } else {
+    //         //                 // If installment is paid
+    //         //                 $installment['minimum_amount'] = $totalFeesAmount / $totalInstallments;
+    //         //                 $installment['maximum_amount'] = $totalFeesAmount;
+
+    //         //                 //Calculate Due Charges amount for not paid installment
+    //         //                 if ($currentDateTimestamp > $installmentDueDateTimestamp) {
+    //         //                     if ($installment->due_charges_type == "percentage") {
+    //         //                         $installment['due_charges_amount'] = ($installment['minimum_amount'] * $installment['due_charges']) / 100;
+    //         //                     } else if ($installment->due_charges_type == "fixed") {
+    //         //                         $installment['due_charges_amount'] = $installment->due_charges;
+    //         //                     }
+
+    //         //                 } else {
+    //         //                     $installment['due_charges_amount'] = 0;
+    //         //                 }
+    //         //             }
+    //         //             $installment['is_paid'] = $installmentPaid ? true : false;
+
+    //         //             //identify which installment is the correct installment
+
+    //         //             /* Current date should be less then the due date && greater than the due date of previous installments  */
+    //         //             /* In case of first installment , previous installment date will be current date - 1 */
+    //         //             if ($currentDateTimestamp <= $installmentDueDateTimestamp && $currentDateTimestamp > $previousInstallmentDate) {
+    //         //                 $installment['is_current'] = true;
+    //         //             } else {
+    //         //                 $installment['is_current'] = false;
+    //         //             }
+    //         //             $previousInstallmentDate = new DateTime($installment['due_date']);
+    //         //             return $installment;
+    //         //         });
+    //         //     }
+
+    //         //     // Unsetting fees_class_type at the end of the loop
+    //         //     // unset($fee['fees_class_type']);
+    //         // }
+
+    //         $feeDetails = getCategoryAdjustedFee($student);
+    //         $fees->adjusted_compulsory_fees = $feeDetails['total'];
+    //         $fees->paid = $feeDetails['paid'];
+    //         $fees->fees_details = collect($feeDetails['breakup'])->map(function ($item, $key) {
+    //             return [
+    //                 'fees_type_name' => $key,
+    //                 'months' => $item['months'],
+    //                 'month_names' => $item['month_names'],
+    //                 'fee_per_month' => $item['fee_per_month'],
+    //                 'total' => $item['total']
+    //             ];
+    //         })->values()->toArray();
+
+    //         ResponseService::successResponse("Fees Fetched Successfully", $fees);
+    //     } catch (Throwable $e) {
+    //         ResponseService::logErrorResponse($e);
+    //         ResponseService::errorResponse();
+    //     }
+    // }
+
     public function getFees(Request $request) {
         $validator = Validator::make($request->all(), [
             'child_id'        => 'required',
@@ -1224,15 +1360,43 @@ class ParentApiController extends Controller {
             ResponseService::validationError($validator->errors()->first());
         }
         try {
-            $student = Auth::user()->guardianRelationChild()->where('id', $request->child_id)->whereHas('user', function ($q) {
-                $q->whereNull('deleted_at');
-            })->first();
+        //            $student = $this->student->builder()->where('id', $request->child_id)->with(['class_section', 'user' => function ($q) {
+        //                $q->with('fees_paid', 'compulsory_fees');
+        //            }])->firstOrFail();
 
+            // $student = Auth::user()->guardianRelationChild()->where('id', $request->child_id)->whereHas('user', function ($q) {
+            //     $q->whereNull('deleted_at');
+            // })->first();
+            $student = $this->user->builder()
+            ->role('Student')
+            ->select('id', 'first_name', 'last_name')
+            ->with([
+                'student' => function ($query) {
+                    $query->select('id', 'class_section_id', 'user_id', 'guardian_id', 'admission_date')
+                        ->with([
+                            'class_section' => function ($query) {
+                                $query->select('id', 'class_id', 'section_id', 'medium_id')
+                                    ->with([
+                                        'class:id,name',
+                                        'section:id,name',
+                                        'medium:id,name',
+                                    ]);
+                            }
+                        ]);
+                },
+                'compulsory_fees.advance_fees'
+            ])
+            ->whereHas('student', function ($q) use ($request) {
+                $q->where('id', $request->child_id);
+            })
+            ->whereNull('deleted_at')
+            ->firstOrFail();
+            // dd($student);
             if (empty($student)) {
                 ResponseService::errorResponse("Child's Account is not Active.Contact School Support", NULL, config('constants.RESPONSE_CODE.INACTIVE_CHILD'));
             }
-            $classId = $student->class_section->class_id;
-            $schoolId = $student->user->school_id;
+            $classId = $student->student->class_section->class_id;
+            $schoolId = $student->school_id;
 
             $currentSessionYear = $this->cache->getDefaultSessionYear($schoolId);
             $sessionYearId = $request->session_year_id ?? $currentSessionYear->id;
@@ -1245,8 +1409,15 @@ class ParentApiController extends Controller {
                 ])->where(['session_year_id' => $sessionYearId])->first();
 
             $currentDateTimestamp = new DateTime(date('Y-m-d'));
-
+            // dd($fees);
             // foreach ($fees as $fee) {
+
+            //     //                if($fee->fees_class_type!=null){
+            //     //                    if(count($fee->fees_class_type) > 0) {
+            //     //                        ;
+            //     //                    }
+            //     //                }
+
             //     $feesDateTimestamp = new DateTime($fee->due_date);
 
             //     // Set Optional Fees Data in response
@@ -1262,8 +1433,11 @@ class ParentApiController extends Controller {
 
 
             //     // Set Compulsory Fees Data in response
+            //     $fee->due_charges_amount = 0;
             //     if (count($fee->compulsory_fees) > 0) {
-            //         $fee->is_overdue = $currentDateTimestamp > $feesDateTimestamp; // true/false
+            //         if ($currentDateTimestamp > $feesDateTimestamp) {
+            //             $fee->due_charges_amount = ($fee->total_compulsory_fees * $fee->due_charges) / 100;
+            //         }
             //         collect($fee->compulsory_fees)->map(function ($compulsoryFees) use ($student) {
             //             $isCompulsoryFeesPaid = $student->user->compulsory_fees->first(function ($compulsoryFeesPaid) use ($student) {
             //                 return $compulsoryFeesPaid->type == 'Full Payment' && $compulsoryFeesPaid->student_id == $student->user->id;
@@ -1300,12 +1474,7 @@ class ParentApiController extends Controller {
 
             //                 //Calculate Due Charges amount for not paid installment
             //                 if ($currentDateTimestamp > $installmentDueDateTimestamp) {
-            //                     if ($installment->due_charges_type == "percentage") {
-            //                         $installment['due_charges_amount'] = ($installment['minimum_amount'] * $installment['due_charges']) / 100;
-            //                     } else if ($installment->due_charges_type == "fixed") {
-            //                         $installment['due_charges_amount'] = $installment->due_charges;
-            //                     }
-
+            //                     $installment['due_charges_amount'] = ($installment['minimum_amount'] * $installment['due_charges']) / 100;
             //                 } else {
             //                     $installment['due_charges_amount'] = 0;
             //                 }
@@ -1328,6 +1497,10 @@ class ParentApiController extends Controller {
 
             //     // Unsetting fees_class_type at the end of the loop
             //     // unset($fee['fees_class_type']);
+            //     $feeDetails = getCategoryAdjustedFee($student);
+            //     $fee->adjusted_compulsory_fees = $feeDetails['total'];
+            //     $fee->paid = $feeDetails['paid'];
+            //     $fee->fees_details = $feeDetails['breakup'];
             // }
 
             $feeDetails = getCategoryAdjustedFee($student);
