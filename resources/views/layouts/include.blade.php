@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{{ asset('/assets/css/materialdesignicons.min.css') }}">
 <link rel="stylesheet" href="{{ asset('/assets/css/vendor.bundle.base.css') }}">
 
-<link rel="stylesheet" href="{{ asset('/assets/fonts/font-awesome.min.css') }}"/>
+
 <link rel="stylesheet" href="{{ asset('/assets/select2/select2.min.css') }}">
 <link rel="stylesheet" href="{{ asset('/assets/jquery-toast-plugin/jquery.toast.min.css') }}">
 <link rel="stylesheet" href="{{ asset('/assets/color-picker/color.min.css') }}">
@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
 <link rel="stylesheet" href="{{ asset('/assets/bootstrap-table/fixed-columns.min.css') }}">
 <link rel="stylesheet" href="{{ asset('/assets/bootstrap-table/reorder-rows.css') }}">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
 
 <script src="{{ asset('/assets/js/vendor.bundle.base.js') }}"></script>
 <script src='{{ asset('/assets/js/fullcalendar.js') }}'></script>

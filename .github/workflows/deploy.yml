@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     name: Push to EC2 Instance
-    runs-on: ubuntu-latest
+    runs-on: ec2-user-latest
 
     steps:
       - name: Checkout the code
@@ -18,10 +18,10 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ec2-3-110-208-53.ap-south-1.compute.amazonaws.com
-          username: ubuntu
+          username: ec2-user
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo chown -R ubuntu:www-data /var/www/html
+            sudo chown -R ec2-user:www-data /var/www/html
             sudo chmod -R 777 /var/www/html
 
       - name: Deploy to my EC2 instance
@@ -30,17 +30,17 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SOURCE: "./"
           REMOTE_HOST: "ec2-3-110-208-53.ap-south-1.compute.amazonaws.com"
-          REMOTE_USER: "ubuntu"
+          REMOTE_USER: "ec2-user"
           TARGET: "/var/www/html"
 
       - name: Fix permissions after deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ec2-3-110-208-53.ap-south-1.compute.amazonaws.com
-          username: ubuntu
+          username: ec2-user
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo chown -R ubuntu:www-data /var/www/html
+            sudo chown -R ec2-user:www-data /var/www/html
             sudo chmod -R 755 /var/www/html
             sudo chmod -R 775 /var/www/html/storage
             sudo chmod -R 775 /var/www/html/bootstrap/cache
