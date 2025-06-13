@@ -21,7 +21,7 @@
                         </h4>
                         <div class="row" id="toolbar">
                             <div class="form-group col-sm-12 col-md-4">
-                                <label class="filter-menu">{{ __('Class Section') }} <span class="text-danger">*</span></label>
+                                <label class="filter-menu">{{ __('Class Section') }} </label>
                                 <select name="filter_class_section_id" id="filter_class_section_id" class="form-control">
                                     <option value="">{{ __('select_class_section') }}</option>
                                     @foreach ($class_sections as $class_section)
@@ -30,7 +30,7 @@
                                 </select>
                             </div>
                             <div class="form-group col-sm-12 col-md-4">
-                                <label class="filter-menu">{{ __('Session Year') }} <span class="text-danger">*</span></label>
+                                <label class="filter-menu">{{ __('Session Year') }} </label>
                                 <select name="filter_session_year_id" id="filter_session_year_id" class="form-control">
                                     @foreach ($sessionYears as $sessionYear)
                                         <option value={{ $sessionYear->id }} {{$sessionYear->default==1?"selected":""}}>{{$sessionYear->name}}</option>
@@ -110,19 +110,19 @@
                             <span aria-hidden="true"><i class="fa fa-close"></i></span>
                         </button>
                     </div>
-                    <form id="edit-form" class="edit-student-registration-form" novalidate="novalidate" action="{{ http_url('students') }}" enctype="multipart/form-data">
+                    <form id="edit-form" class="edit-student-registration-form" action="{{ http_url('students') }}" enctype="multipart/form-data">
                         @csrf
                         <div class="modal-body">
                             <div class="row">
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('admission_no') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('admission_no') }} </label>
                                     {!! Form::text('admission_no', null, ['placeholder' => __('admission_no'), 'class' => 'form-control', 'id' => 'edit_admission_no' ,'readonly'=>true]) !!}
 
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('Session Year') }} <span class="text-danger">*</span></label>
-                                    <select required name="session_year_id" class="form-control" id="session_year_id">
+                                    <label>{{ __('Session Year') }} </label>
+                                    <select name="session_year_id" class="form-control" id="session_year_id">
                                         @foreach ($sessionYears as $sessionYear)
                                             <option value="{{ $sessionYear->id }}">{{$sessionYear->name}}</option>
                                         @endforeach
@@ -130,8 +130,8 @@
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('Class Section') }} <span class="text-danger">*</span></label>
-                                    <select required name="class_section_id" class="form-control" id="edit_student_class_section_id">
+                                    <label>{{ __('Class Section') }} </label>
+                                    <select name="class_section_id" class="form-control" id="edit_student_class_section_id">
                                         <option value="">{{ __('select_class_section') }}</option>
                                         @foreach ($class_sections as $class_section)
                                             <option value={{ $class_section->id }}>{{$class_section->full_name}}</option>
@@ -143,24 +143,24 @@
                             <hr>
                             <div class="row mt-5">
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('first_name') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('first_name') }} </label>
                                     {!! Form::text('first_name', null, ['placeholder' => __('first_name'), 'class' => 'form-control', 'id' => 'edit_first_name']) !!}
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('last_name') }} <span class="text-danger">*</span></label>
-                                    {!! Form::text('last_name', null, ['placeholder' => __('last_name'), 'class' => 'form-control', 'id' => 'edit_last_name']) !!}
+                                    <label>{{ __('last_name') }} </label>
+                                    {!! Form::text('last_names', null, ['placeholder' => __('last_name'), 'class' => 'form-control', 'id' => 'edit_last_name']) !!}
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('dob') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('dob') }} </label>
                                     {!! Form::text('dob', null, ['placeholder' => __('dob'), 'class' => 'datepicker-popup-no-future form-control', 'id' => 'edit_dob']) !!}
                                     <span class="input-group-addon input-group-append">
                                     </span>
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-4">
-                                    <label>{{ __('gender') }} <span class="text-danger">*</span></label><br>
+                                    <label>{{ __('gender') }} </label><br>
                                     <div class="d-flex">
                                         <div class="form-check form-check-inline">
                                             <label class="form-check-label">
@@ -180,7 +180,7 @@
                                     <label>{{ __('image') }} </label>
                                     <input type="file" name="image" class="file-upload-default"/>
                                     <div class="input-group col-xs-12">
-                                        <input type="text" class="form-control file-upload-info" disabled="" placeholder="{{ __('image') }}" required="required" id="edit_image"/>
+                                        <input type="text" class="form-control file-upload-info" disabled="" placeholder="{{ __('image') }}" id="edit_image"/>
                                         <span class="input-group-append">
                                             <button class="file-upload-browse btn btn-theme" type="button">{{ __('upload') }}</button>
                                         </span>
@@ -194,12 +194,12 @@
                                     {!! Form::number('mobile', null, ['placeholder' => __('mobile'), 'min' => 1 , 'class' => 'form-control remove-number-increment', 'id' => 'edit_mobile']) !!}
                                 </div>
                                 <div class="form-group col-sm-12 col-md-6">
-                                    <label>{{ __('current_address') }} <span class="text-danger">*</span></label>
-                                    {!! Form::textarea('current_address', null, ['required', 'placeholder' => __('current_address'), 'class' => 'form-control', 'rows' => 3,'id'=>'edit-current-address']) !!}
+                                    <label>{{ __('current_address') }} </label>
+                                    {!! Form::textarea('current_address', null, ['placeholder' => __('current_address'), 'class' => 'form-control', 'rows' => 3,'id'=>'edit-current-address']) !!}
                                 </div>
                                 <div class="form-group col-sm-12 col-md-6">
-                                    <label>{{ __('permanent_address') }} <span class="text-danger">*</span></label>
-                                    {!! Form::textarea('permanent_address', null, ['required', 'placeholder' => __('permanent_address'), 'class' => 'form-control', 'rows' => 3,'id'=>'edit-permanent-address']) !!}
+                                    <label>{{ __('permanent_address') }} </label>
+                                    {!! Form::textarea('permanent_address', null, ['placeholder' => __('permanent_address'), 'class' => 'form-control', 'rows' => 3,'id'=>'edit-permanent-address']) !!}
                                 </div>
                             </div>
 
@@ -224,7 +224,7 @@
                                                 {{-- Add lable to all the elements excluding checkbox --}}
                                                 @if($data->type != 'radio' && $data->type != 'checkbox')
                                                     <label>{{$data->name}} @if($data->is_required)
-                                                            <span class="text-danger">*</span>
+
                                                         @endif</label>
                                                 @endif
 
@@ -251,7 +251,7 @@
                                                     {{-- Radio Field --}}
                                                 @elseif($data->type == 'radio')
                                                     <label class="d-block">{{$data->name}} @if($data->is_required)
-                                                            <span class="text-danger">*</span>
+
                                                         @endif</label>
                                                     <div class="row form-check-inline ml-1">
                                                         @foreach ($data->default_values as $keyRadio => $value)
@@ -267,7 +267,7 @@
                                                     {{-- Checkbox Field --}}
                                                 @elseif($data->type == 'checkbox')
                                                     <label class="d-block">{{$data->name}} @if($data->is_required)
-                                                            <span class="text-danger">*</span>
+
                                                         @endif</label>
                                                     <div class="row form-check-inline ml-1">
                                                         @foreach ($data->default_values as $chkKey => $value)
@@ -320,26 +320,26 @@
                             {{-- Guardian Details --}}
                             <div class="row mt-5">
                                 <div class="form-group col-sm-12 col-md-12">
-                                    <label>{{ __('guardian') . ' ' . __('email') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('guardian') . ' ' . __('email') }} </label>
                                     <select class="edit-guardian-search form-control" name="guardian_id"></select>
                                     <input type="hidden" id="edit_guardian_email" name="guardian_email">
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('guardian') . ' ' . __('first_name') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('guardian') . ' ' . __('first_name') }} </label>
                                     {!! Form::text('guardian_first_name', null, ['placeholder' => __('guardian') . ' ' . __('first_name'), 'class' => 'form-control', 'id' => 'edit_guardian_first_name']) !!}
                                 </div>
 
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('guardian') . ' ' . __('last_name') }} <span class="text-danger">*</span></label>
-                                    {!! Form::text('guardian_last_name', null, ['placeholder' => __('guardian') . ' ' . __('last_name'), 'class' => 'form-control', 'id' => 'edit_guardian_last_name']) !!}
+                                    <label>{{ __('guardian') . ' ' . __('last_name') }} </label>
+                                    {!! Form::text('guardian_last_names', null, ['placeholder' => __('guardian') . ' ' . __('last_name'), 'class' => 'form-control', 'id' => 'edit_guardian_last_name']) !!}
                                 </div>
                                 <div class="form-group col-sm-12 col-md-12 col-lg-6 col-xl-4">
-                                    <label>{{ __('guardian') . ' ' . __('mobile') }} <span class="text-danger">*</span></label>
+                                    <label>{{ __('guardian') . ' ' . __('mobile') }} </label>
                                     {!! Form::number('guardian_mobile', null, ['placeholder' => __('guardian') . ' ' . __('mobile'), 'class' => 'form-control remove-number-increment', 'min' => 1  ,'id' => 'edit_guardian_mobile']) !!}
                                 </div>
                                 <div class="form-group col-sm-12 col-md-12">
-                                    <label>{{ __('gender') }} <span class="text-danger">*</span></label><br>
+                                    <label>{{ __('gender') }} </label><br>
                                     <div class="d-flex">
                                         <div class="form-check form-check-inline">
                                             <label class="form-check-label">
@@ -361,7 +361,7 @@
                                     <label>{{ __('image') }} </label>
                                     <input type="file" name="guardian_image" class="file-upload-default"/>
                                     <div class="input-group col-xs-12">
-                                        <input type="text" class="form-control file-upload-info" disabled="" placeholder="{{ __('image') }}" required="required" id="edit_image"/>
+                                        <input type="text" class="form-control file-upload-info" disabled="" placeholder="{{ __('image') }}" id="edit_image"/>
                                         <span class="input-group-append">
                                             <button class="file-upload-browse btn btn-theme" type="button">{{ __('upload') }}</button>
                                         </span>

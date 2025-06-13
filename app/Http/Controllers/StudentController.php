@@ -95,21 +95,21 @@ class StudentController extends Controller {
     public function store(Request $request) {
         ResponseService::noPermissionThenRedirect(['student-create']);
         $request->validate([
-            'first_name'          => 'required',
-            'last_name'           => 'required',
+            'first_name'          => 'nullable',
+            'last_name'           => 'nullable',
             'mobile'              => 'nullable|regex:/^([0-9\s\-\+\(\)]*)$/',
             'image'               => 'nullable|mimes:jpeg,png,jpg,svg|image|max:2048',
-            'dob'                 => 'required',
-            'class_section_id'    => 'required|numeric',
+            'dob'                 => 'nullable',
+            'class_section_id'    => 'nullable|numeric',
             /*NOTE : Unique constraint is used because it's not school specific*/
-            'admission_no'        => 'required|unique:users,email',
-            'admission_date'      => 'required',
-            'session_year_id'     => 'required|numeric',
-            'guardian_email'      => 'required|email',
-            'guardian_first_name' => 'required|string',
-            'guardian_last_name'  => 'required|string',
-            'guardian_mobile'     => 'required|numeric',
-            'guardian_gender'     => 'required|in:male,female',
+            'admission_no'        => 'nullable|unique:users,email',
+            'admission_date'      => 'nullable',
+            'session_year_id'     => 'nullable|numeric',
+            'guardian_email'      => 'nullable|email',
+            'guardian_first_name' => 'nullable|string',
+            'guardian_last_name'  => 'nullable|string',
+            'guardian_mobile'     => 'nullable|numeric',
+            'guardian_gender'     => 'nullable|in:male,female',
             'guardian_image'      => 'nullable|mimes:jpg,jpeg,png|max:4096',
             'status'              => 'nullable|in:0,1',
         ]);
@@ -181,16 +181,16 @@ class StudentController extends Controller {
     public function update($id, Request $request) {
         ResponseService::noAnyPermissionThenSendJson(['student-create', 'student-edit']);
         $rules = [
-            'first_name'      => 'required',
-            'last_name'       => 'required',
+            'first_name'      => 'nullable',
+            'last_names'       => 'nullable',
             'mobile'          => 'nullable|regex:/^([0-9\s\-\+\(\)]*)$/',
             'image'           => 'nullable|mimes:jpeg,png,jpg,svg|image|max:2048',
-            'dob'             => 'required',
-            'session_year_id' => 'required|numeric',
-            'guardian_email'  => 'required|email|unique:users,email',
+            'dob'             => 'nullable',
+            'session_year_id' => 'nullable|numeric',
+            'guardian_email'  => 'nullable|email|unique:users,email',
         ];
         if (is_numeric($request->guardian_id)) {
-            $rules['guardian_email'] = 'required|email|unique:users,email,' . $request->guardian_id;
+            $rules['guardian_email'] = 'nullable|email|unique:users,email,' . $request->guardian_id;
         }
         $request->validate($rules);
 
@@ -198,9 +198,9 @@ class StudentController extends Controller {
             DB::beginTransaction();
             $userService = app(UserService::class);
             $sessionYear = $this->sessionYear->findById($request->session_year_id);
-            $guardian = $userService->createOrUpdateParent($request->guardian_first_name, $request->guardian_last_name, $request->guardian_email, $request->guardian_mobile, $request->guardian_gender, $request->guardian_image, $request->parent_reset_password);
+            $guardian = $userService->createOrUpdateParent($request->guardian_first_name, $request->guardian_last_names, $request->guardian_email, $request->guardian_mobile, $request->guardian_gender, $request->guardian_image, $request->parent_reset_password);
 
-            $userService->updateStudentUser($id, $request->first_name, $request->last_name, $request->mobile, $request->dob, $request->gender, $request->image, $sessionYear->id, $request->extra_fields ?? [], $guardian->id, $request->current_address, $request->permanent_address, $request->reset_password, $request->class_section_id);
+            $userService->updateStudentUser($id, $request->first_name, $request->last_names, $request->mobile, $request->dob, $request->gender, $request->image, $sessionYear->id, $request->extra_fields ?? [], $guardian->id, $request->current_address, $request->permanent_address, $request->reset_password, $request->class_section_id);
             DB::commit();
             ResponseService::successResponse('Data Updated Successfully');
         } catch (Throwable $e) {
