@@ -595,7 +595,11 @@ class FeesController extends Controller
         $order = request('order', 'DESC');
 
         //Fetching Students Data on Basis of Class Section ID with Relation fees paid
-        $sql = $this->paymentTransaction->builder()->with('user:id,first_name,last_name');
+        // $sql = $this->paymentTransaction->builder()->with('user:id,first_name,last_name,date as created_at');
+        $sql = $this->paymentTransaction
+            ->builder()
+            ->with('user:id,first_name,last_name')
+            ->selectRaw('payment_transactions.*, payment_transactions.date as date');
 
         if (!empty($request->search)) {
             $search = $request->search;
@@ -614,7 +618,7 @@ class FeesController extends Controller
         }
 
         if ($request->month) {
-            $sql->whereMonth('created_at', $request->month);
+            $sql->whereMonth('date', $request->month);
         }
 
         $total = $sql->count();

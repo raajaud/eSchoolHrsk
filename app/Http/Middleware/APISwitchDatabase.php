@@ -20,7 +20,7 @@ class APISwitchDatabase
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $schoolCode = $request->header('school-code');
+        $schoolCode = '1234567890';
         if ($schoolCode) {
             $school = School::on('mysql')->where('code',$schoolCode)->first();
 
@@ -32,7 +32,7 @@ class APISwitchDatabase
                 DB::setDefaultConnection('school');
                 $token = $request->bearerToken();
                 $user = PersonalAccessToken::findToken($token);
-                
+
                 if ($user) {
                     Auth::loginUsingId($user->tokenable_id);
                 } else {

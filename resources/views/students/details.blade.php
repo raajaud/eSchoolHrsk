@@ -40,6 +40,8 @@
                             @can('student-delete')
                                 <div class="form-group col-12">
                                     <button id="update-status" class="btn btn-secondary" disabled><span class="update-status-btn-name">{{ __('Inactive') }}</span></button>
+
+                                    <button id="delete-student" class="btn btn-secondary" disabled><span class="delete-student-btn-name">{{ __('Delete') }}</span></button>
                                 </div>
                             @endcan
                         </div>
@@ -403,8 +405,12 @@
             if (value === "" || value === 0 || value == null) {
                 $("#update-status").data("id")
                 $('.update-status-btn-name').html(DeactiveLang);
+                $("#delete-student").data("id")
+                $('.delete-student-btn-name').html(DeactiveLang);
+
             } else {
                 $('.update-status-btn-name').html(ActiveLang);
+                $('.delete-student-btn-name').html(ActiveLang);
             }
         })
 
@@ -428,15 +434,19 @@
         $('#table_list').bootstrapTable({
             onCheck: function (row) {
                 updateUserStatus("#table_list", '#update-status');
+                updateUserStatus("#table_list", '#delete-student');
             },
             onUncheck: function (row) {
                 updateUserStatus("#table_list", '#update-status');
+                updateUserStatus("#table_list", '#delete-student');
             },
             onCheckAll: function (rows) {
                 updateUserStatus("#table_list", '#update-status');
+                updateUserStatus("#table_list", '#delete-student');
             },
             onUncheckAll: function (rows) {
                 updateUserStatus("#table_list", '#update-status');
+                updateUserStatus("#table_list", '#delete-student');
             }
         });
         $("#update-status").on('click', function (e) {
@@ -458,6 +468,38 @@
                     function successCallback(response) {
                         $('#table_list').bootstrapTable('refresh');
                         $('#update-status').prop('disabled', true);
+                        userIds = null;
+                        showSuccessToast(response.message);
+                    }
+
+                    function errorCallback(response) {
+                        showErrorToast(response.message);
+                    }
+
+                    ajaxRequest('POST', url, data, null, successCallback, errorCallback);
+                }
+            })
+        })
+
+        $("#delete-student").on('click', function (e) {
+            Swal.fire({
+                title: window.trans["Are you sure"],
+                text: window.trans["Delete Selected Users"],
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: window.trans["Yes, Change it"],
+                cancelButtonText: window.trans["Cancel"]
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let url = baseUrl + '/students/delete-student-bulk';
+                    let data = new FormData();
+                    data.append("ids", userIds)
+
+                    function successCallback(response) {
+                        $('#table_list').bootstrapTable('refresh');
+                        $('#delete-student').prop('disabled', true);
                         userIds = null;
                         showSuccessToast(response.message);
                     }

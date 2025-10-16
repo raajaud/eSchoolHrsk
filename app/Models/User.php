@@ -40,6 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail {
         'occupation',
         'reset_request',
         'status',
+        'monthly_fees',
         'deleted_at',
         'email_verified_at'
     ];
@@ -347,7 +348,7 @@ class User extends Authenticatable implements MustVerifyEmail {
     {
         return $this->hasMany(StudentSubject::class, 'student_id');
     }
-    
+
     public function extra_user_datas()
     {
         return $this->hasMany(ExtraStudentData::class, 'user_id');

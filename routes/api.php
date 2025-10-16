@@ -31,7 +31,7 @@ Route::post('subscription/webhook/razorpay', [SubscriptionWebhookController::cla
 
 Route::group(['middleware' => 'APISwitchDatabase'], static function () {
     Route::post('logout', [ApiController::class, 'logout']);
-   
+
 });
 Route::get('fees-due-notification',[ApiController::class, 'sendFeeNotification']);
 /**
@@ -230,7 +230,7 @@ Route::group(['prefix' => 'staff'], static function () {
         Route::get('payroll-staff-list', [StaffApiController::class, 'staffPayrollList']);
 
         Route::get('payroll-year', [StaffApiController::class, 'payrollYear']);
-        
+
 
         Route::get('profile', [StaffApiController::class, 'profile']);
         Route::get('counter', [StaffApiController::class, 'counter']);
@@ -241,13 +241,13 @@ Route::group(['prefix' => 'staff'], static function () {
         Route::get('leave-request', [StaffApiController::class, 'leaveRequest']);
         Route::post('leave-approve', [StaffApiController::class, 'leaveApprove']);
         Route::post('leave-delete', [StaffApiController::class, 'leaveDelete']);
-        
+
         // Announcement
         Route::get('get-announcement', [StaffApiController::class, 'getAnnouncement']);
         Route::post('send-announcement', [StaffApiController::class, 'sendAnnouncement']);
         Route::post('update-announcement', [StaffApiController::class, 'updateAnnouncement']);
         Route::post('delete-announcement', [StaffApiController::class, 'deleteAnnouncement']);
-        
+
         Route::get('student/attendance', [StaffApiController::class, 'studentAttendance']);
 
         Route::get('roles', [StaffApiController::class, 'getRoles']);
@@ -261,14 +261,14 @@ Route::group(['prefix' => 'staff'], static function () {
 
         Route::get('student-offline-exam-result', [StaffApiController::class, 'getOfflineExamResult']);
         Route::get('features-permission', [StaffApiController::class, 'getFeaturesPermissions']);
-        
+
         Route::get('class-timetable', [StaffApiController::class, 'getClassTimetable']);
 
         Route::get('student-fees-receipt', [StaffApiController::class, 'feesReceipt']);
         Route::get('allowances-deductions', [StaffApiController::class, 'allowancesDeductions']);
 
-        
-        
+
+
     });
 });
 
@@ -320,5 +320,5 @@ Route::group(['middleware' => ['APISwitchDatabase',]], static function () {
     Route::get('users/chat/history', [ApiController::class, 'usersChatHistory']);
 
     Route::post('class-section/teachers', [ApiController::class, 'classSectionTeachers']);
-    
+
 });

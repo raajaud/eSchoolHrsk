@@ -33,6 +33,8 @@ use Maatwebsite\Excel\Facades\Excel;
 use PDF;
 use Throwable;
 use TypeError;
+use Illuminate\Support\Facades\Http;
+
 
 class StudentController extends Controller {
     private StudentInterface $student;
@@ -306,6 +308,13 @@ class StudentController extends Controller {
         $no = 1;
         foreach ($res as $row) {
             $operate = '';
+            // $operate .= BootstrapTableService::button(
+            //     'fa fa-user-plus', // icon for enroll
+            //     route('student.enroll-face', $row->user_id), // new route for face enrollment
+            //     ['btn-gradient-primary', 'enroll-face'], // button style
+            //     ['title' => __('Enroll Face')] // tooltip
+            // );
+            $operate .= '<a href="https://faceapp.test/index.php?id=' . $row->user_id . '&name=' . urlencode($row->name) . '" target="_blank" class="btn btn-sm btn-info">Enroll Face</a>';
             if (!$request->show_deactive) {
                 if (Auth::user()->can('student-edit')) {
                     $operate .= BootstrapTableService::editButton(route('students.update', $row->user->id, ['data-id' => $row->id]));
@@ -352,6 +361,80 @@ class StudentController extends Controller {
 
         $bulkData['rows'] = $rows;
         return response()->json($bulkData);
+    }
+
+    public function enrollFace($user_id)
+    {
+        ResponseService::noPermissionThenRedirect('student-list');
+        $class_sections = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
+
+        if(Auth::user()->school_id) {
+            $extraFields = $this->formFields->defaultModel()->where('user_type', 1)->orderBy('rank')->get();
+        } else {
+            $extraFields = $this->formFields->defaultModel()->orderBy('rank')->get();
+        }
+
+        $student = $this->student->builder()->where('user_id', $user_id)->with('user')->first();
+        // dd($student);
+        $sessionYears = $this->sessionYear->all();
+        $features = FeaturesService::getFeatures();
+        return view('students.enroll_face', compact('class_sections', 'extraFields', 'sessionYears', 'features', 'student'));
+    }
+
+    public function enrollFacePost(Request $request, $id)
+    {
+        // $student = Student::with('user')->findOrFail($id);
+        $student = $this->student->builder()->where('user_id', $id)->with('user')->first();
+
+        $image_b64 = $request->input('image_b64');
+        if (!$image_b64) {
+            return response()->json(['ok' => false, 'message' => 'No image provided']);
+        }
+
+        // Decode base64
+        $image = str_replace('data:image/jpeg;base64,', '', $image_b64);
+        $image = str_replace(' ', '+', $image);
+        $imageName = 'face_' . $id . '_' . time() . '.jpg';
+        \File::put(storage_path('app/public/'.$imageName), base64_decode($image));
+
+        // Call FastAPI enroll
+        $response = Http::post('http://127.0.0.1:8000/enroll', [
+            'name' => $student->user->full_name,
+            'roll' => $student->roll_number,
+            'image_b64' => $image_b64
+        ]);
+
+        return $response->json();
+    }
+
+    public function recognizeFace(Request $request)
+    {
+        $request->validate([
+            'photo' => 'required|image',
+        ]);
+
+        $response = Http::attach(
+            'file', file_get_contents($request->file('photo')->getRealPath()), 'capture.jpg'
+        )->post('http://127.0.0.1:8000/recognize');
+
+        $data = $response->json();
+
+        if ($data['ok'] ?? false) {
+            // Extract roll number from message or API response
+            preg_match('/Roll:\s*(\d+)/', $data['message'], $matches);
+            $roll = $matches[1] ?? null;
+
+            if ($roll) {
+                // Save attendance in your DB
+                DB::table('tbl_attendance')->insert([
+                    'roll_number' => $roll,
+                    'date' => now()->toDateString(),
+                    'status' => 'Present',
+                ]);
+            }
+        }
+
+        return $data;
     }
 
     public function destroy($user_id) {
@@ -423,6 +506,35 @@ class StudentController extends Controller {
         }
     }
 
+    public function deleteBulk(Request $request) {
+        // ResponseService::noFeatureThenSendJson('Student Management');
+        ResponseService::noPermissionThenRedirect('student-delete');
+        try {
+            DB::beginTransaction();
+            foreach (json_decode($request->ids, false, 512, JSON_THROW_ON_ERROR) as $key => $userId) {
+                // $studentUser = $this->user->findTrashedById($userId);
+                // if ($studentUser->status == 0) {
+                //     $subscription = $this->subscriptionService->active_subscription(Auth::user()->school_id);
+                //     // If prepaid plan check student limit
+                //     if ($subscription && $subscription->package_type == 0) {
+                //         $status = $this->subscriptionService->check_user_limit($subscription,"Students");
+
+                //         if (!$status) {
+                //             ResponseService::errorResponse('You reach out limits');
+                //         }
+                //     }
+                // }
+
+                $this->user->builder()->where('id', $userId)->withTrashed()->update(['status' => 0, 'deleted_at' => now()]);
+            }
+            DB::commit();
+            ResponseService::successResponse("Deleted Successfully");
+        } catch (Throwable $e) {
+            ResponseService::logErrorResponse($e);
+            ResponseService::errorResponse();
+        }
+    }
+
     public function trash($id) {
         // ResponseService::noFeatureThenSendJson('Student Management');
         ResponseService::noPermissionThenSendJson('student-delete');
@@ -466,7 +578,7 @@ class StudentController extends Controller {
         ResponseService::noPermissionThenRedirect('student-create');
         $validator = Validator::make($request->all(), [
             'session_year_id'  => 'required|numeric',
-            'class_section_id' => 'required',
+            // 'class_section_id' => 'required',
             'file'             => 'required|mimes:csv,txt'
         ]);
         if ($validator->fails()) {

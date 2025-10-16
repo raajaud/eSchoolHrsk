@@ -191,7 +191,7 @@ class BootstrapTableService
         $iconClass = "fa fa-download";
         return self::download_urls($iconClass, $urls, $customClass, $customAttributes);
     }
-    
+
     public static function download_urls(string $iconClass, array $urls, array $customClass = [], array $customAttributes = []) {
 
         $customClassStr = implode(" ", $customClass);

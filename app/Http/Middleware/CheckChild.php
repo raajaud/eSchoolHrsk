@@ -26,7 +26,7 @@ class CheckChild {
         $url = $request->getRequestUri();
         // For api routes
         if (strpos($url, 'api') !== false) {
-            $schoolCode = $request->header('school-code');
+            $schoolCode = '1234567890';
             if ($schoolCode) {
                 $school = School::on('mysql')->where('code',$schoolCode)->first();
 
@@ -38,13 +38,13 @@ class CheckChild {
                     DB::setDefaultConnection('school');
                     $token = $request->bearerToken();
                     $user = PersonalAccessToken::findToken($token);
-                    
+
                     if ($user) {
-                        Auth::loginUsingId($user->tokenable_id);    
+                        Auth::loginUsingId($user->tokenable_id);
                     } else {
-                        return response()->json(['message' => 'Unauthenticated.']);    
+                        return response()->json(['message' => 'Unauthenticated.']);
                     }
-    
+
                 } else {
                     return response()->json(['message' => 'Invalid school code'], 400);
                 }
@@ -64,7 +64,7 @@ class CheckChild {
                 DB::setDefaultConnection('mysql');
             }
         }
-        
+
         $children = $request->user()->guardianRelationChild()->where('id', $request->child_id)->first();
         if (empty($children)) {
             return response()->json(array(

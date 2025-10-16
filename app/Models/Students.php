@@ -219,4 +219,9 @@ class Students extends Model {
     {
         return $this->hasMany(Attendance::class, 'student_id', 'user_id');
     }
+
+    public function points_history() {
+        return $this->hasMany(Point::class, 'child_id', 'user_id')->orderByDesc('created_at');
+    }
+
 }

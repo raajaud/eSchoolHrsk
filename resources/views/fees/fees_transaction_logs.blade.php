@@ -65,7 +65,7 @@
                                 <th scope="col" data-field="payment_status" data-align="center" data-formatter="transactionPaymentStatus">{{ __('Payment Status') }}</th>
                                 <th scope="col" data-field="order_id" data-align="center" data-visible="false">{{ __('order_id') }}</th>
                                 <th scope="col" data-field="payment_id" data-align="center" data-visible="false">{{ __('payment_id') }}</th>
-                                <th scope="col" data-field="created_at" data-formatter="dateTimeFormatter" data-sortable="false" data-visible="true">{{ __('date') }}</th>
+                                <th scope="col" data-field="date" data-formatter="dateTimeFormatter" data-sortable="false" data-visible="true">{{ __('date') }}</th>
                                 <th scope="col" data-field="updated_at" data-formatter="dateTimeFormatter" data-sortable="false" data-visible="false">{{ __('updated_at') }}</th>
                             </tr>
                             </thead>

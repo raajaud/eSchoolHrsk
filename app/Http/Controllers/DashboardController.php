@@ -6,6 +6,7 @@ use App\Models\Addon;
 use App\Models\Feature;
 use App\Models\Package;
 use App\Models\PaymentConfiguration;
+use App\Models\PaymentTransaction;
 use App\Repositories\Announcement\AnnouncementInterface;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
 use App\Repositories\ClassSection\ClassSectionInterface;
@@ -72,7 +73,7 @@ class DashboardController extends Controller {
     }
 
     public function index() {
-        
+
         if(( Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('School Admin')) && Auth::user()->two_factor_enabled == 1 && !Auth::user()->two_factor_expires_at && Auth::user()->email != 'superadmin@gmail.com' && Auth::user()->email != 'demo@school.com') {
             $user = Auth::user();
             DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => null,'two_factor_expires_at' => null]);
@@ -97,7 +98,7 @@ class DashboardController extends Controller {
                 $q->where('application_status', 1);
             })->count();
             $parent = $this->student->builder()->where('application_status',1)->groupBy('guardian_id')->get()->count();
-            
+
             if ($student > 0) {
                 $boys_count = $this->user->builder()->role('Student')->where('gender', 'male')->withTrashed()->count();
                 $girls_count = $this->user->builder()->role('Student')->where('gender', 'female')->withTrashed()->count();
@@ -106,7 +107,11 @@ class DashboardController extends Controller {
                 $total_students = $student;
             }
             $classes_counter = $this->class->builder()->count();
-            $streams = $this->stream->builder()->count();
+            $streams = $amount = PaymentTransaction::sum('amount');
+
+            $formatter = new \NumberFormatter('en_IN', \NumberFormatter::CURRENCY);
+            $streams = $formatter->formatCurrency($amount, 'INR');
+
             // End Counters
 
             $subscription = $this->subscriptionService->active_subscription(Auth::user()->school_id);
@@ -128,7 +133,7 @@ class DashboardController extends Controller {
                     // 1 => Already set upcoming plan update subscription
                     // 0 => Set current subscription plan as upcoming
                     $prepiad_upcoming_plan_type = 1;
-    
+
                     if (!$prepiad_upcoming_plan) {
                         // Add current subscription in the upcoming subscription
                         $prepiad_upcoming_plan = $subscription;
@@ -151,14 +156,14 @@ class DashboardController extends Controller {
             $previous_subscriptions = $this->subscription->builder()->with('subscription_bill.transaction')->get()->whereIn('status', [3, 4, 5]);
 
             $defaultSessionYear = $this->cache->getDefaultSessionYear();
-            
+
             $holiday = $this->holiday->builder()->whereDate('date', '>=', Carbon::now()->format('Y-m-d'))->whereDate('date', '<=', $defaultSessionYear->end_date)->orderBy('date', 'ASC')->get();
 
             $announcement = $this->announcement->builder()->whereHas('announcement_class', function ($q) {
                 $q->where('class_subject_id', null);
             })->limit(5)->orderBy('id','desc')->get();
 
-            
+
             // Attendance graph
             $class_names = $this->class->builder()->with('medium','stream')->get()->pluck('full_name','id');
 
@@ -171,7 +176,7 @@ class DashboardController extends Controller {
             $student_ids = $this->feesPaid->builder()->whereHas('fees',function($q) use($defaultSessionYear){
                 $q->where('session_year_id',$defaultSessionYear->id);
             })->has('compulsory_fee')->groupBy('student_id')->pluck('student_id');
-            
+
             $unPaidFees = $this->user->builder()->role('Student')->whereNotIn('id',$student_ids)->count();
 
             $partialPaidFees = $this->feesPaid->builder()->whereHas('fees',function($q) use($defaultSessionYear) {
@@ -181,7 +186,7 @@ class DashboardController extends Controller {
             $fullPaidFees = $this->feesPaid->builder()->whereHas('fees',function($q) use($defaultSessionYear) {
                 $q->where('session_year_id',$defaultSessionYear->id);
             })->has('compulsory_fee')->where('is_fully_paid',1)->groupBy('student_id')->orderBy('id')->get()->count();
-            
+
             if ($partialPaidFees == 0 && $fullPaidFees == 0) {
                 $unPaidFees = 0;
             }
@@ -266,7 +271,7 @@ class DashboardController extends Controller {
                 ->where('day', $fullDayName)->orderBy('start_time', 'ASC')
                 ->with('subject:id,name,type', 'class_section.class', 'class_section.section', 'class_section.medium')->get();
         }
-        
+
         if ((Auth::user()->hasRole('School Admin') || Auth::user()->school_id) && (!Auth::user()->hasRole('Teacher') && !Auth::user()->hasRole('Super Admin')) ) {
             return view('dashboard', compact('teacher', 'parent', 'student', 'announcement', 'teachers', 'boys', 'girls', 'total_students','license_expire', 'subscription', 'previous_subscriptions', 'holiday', 'classData', 'prepiad_upcoming_plan', 'prepiad_upcoming_plan_type','check_payment','sessionYear','classes_counter','streams','exams', 'fees_detail', 'settings', 'class_names', 'paymentConfiguration','system_settings','class_section_names'));
         }

@@ -64,7 +64,7 @@ class UserService {
         );
 
         //NOTE : This line will return the old values if the user is already exists
-        $user = $this->user->guardian()->where('email', $email)->first();
+        $user = $this->user->guardian()->where('mobile', $mobile)->first();
         if (!empty($image)) {
             $parent['image'] = UploadService::upload($image, 'guardian');
         }
@@ -111,8 +111,9 @@ class UserService {
      * @throws Throwable
      */
 
-    public function createStudentUser(string $first_name, string $last_name, string $admission_no, string|null $mobile, string $dob, string $gender, \Symfony\Component\HttpFoundation\File\UploadedFile|null $image, int $classSectionID, string $admissionDate, $current_address = null, $permanent_address = null, int $sessionYearID, int $guardianID, array $extraFields = [], int $status, $is_send_notification = null) {
-        $password = $this->makeStudentPassword($dob);
+    public function createStudentUser(string $first_name, string $last_name, string $admission_no, string|null $mobile, string $dob, string $gender, \Symfony\Component\HttpFoundation\File\UploadedFile|null $image, int $classSectionID, string $admissionDate, $current_address = null, $permanent_address = null, int $sessionYearID, int $guardianID, array $extraFields = [], int $status, $is_send_notification = null, $monthly_fees = null) {
+        $password = $this->makeStudentPassword($mobile);
+        // dd($monthly_fees);
         //Create Student User First
         $user = $this->user->create([
             'first_name'        => $first_name,
@@ -127,10 +128,11 @@ class UserService {
             'status'            => $status,
             'current_address'   => $current_address,
             'permanent_address' => $permanent_address,
+            'monthly_fees'      => $monthly_fees??0.00,
             'deleted_at'        => $status == 1 ? null : '1970-01-01 01:00:00'
         ]);
         $user->assignRole('Student');
-
+        // dd($user);
         $roll_number_db = $this->student->builder()->select(DB::raw('max(roll_number)'))->where('class_section_id', $classSectionID)->first();
         $roll_number_db = $roll_number_db['max(roll_number)'];
         $roll_number = $roll_number_db + 1;

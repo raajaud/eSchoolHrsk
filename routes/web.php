@@ -93,6 +93,9 @@ use Illuminate\Support\Facades\Session;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+Route::post('/student/{id}/enroll-face-post', [StudentController::class, 'enrollFacePost'])->name('student.enroll-face-post');
+
 Auth::routes();
 Auth::routes(['verify' => true]);
 
@@ -467,6 +470,7 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::post('roll-number', [StudentController::class, 'rollNumberUpdate'])->name('students.roll-number.update');
             Route::get('roll-number-list', [StudentController::class, 'rollNumberShow'])->name('students.roll-number.show');
             Route::post("change-status-bulk", [StudentController::class, 'changeStatusBulk'])->name('students.change-status-bulk');
+            Route::post("delete-student-bulk", [StudentController::class, 'deleteBulk'])->name('students.delete-student-bulk');
 
             Route::delete("/{id}/deleted", [StudentController::class, 'trash'])->name('student.trash');
 
@@ -479,6 +483,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::get('get-class-section-by-class/{class_id}',[StudentController::class, 'getclassSectionByClass']);
         });
         Route::resource('students', StudentController::class);
+
+        Route::get('/student/{id}/enroll-face', [StudentController::class, 'enrollFace'])->name('student.enroll-face');
 
         Route::get('id-card-settings', [SchoolSettingsController::class, 'id_card_index'])->name('id-card-settings');
         Route::post('id-card-settings', [SchoolSettingsController::class, 'id_card_store']);

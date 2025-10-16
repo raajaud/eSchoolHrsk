@@ -19,6 +19,7 @@ class VerifyCsrfToken extends Middleware
         'subscription/webhook/paystack',
         'subscription/webhook/flutterwave',
         'payment/status',
-        'payment/cancel'
+        'payment/cancel',
+        'student/*/enroll-face-post',
     ];
 }

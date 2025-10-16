@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Auth;
 class PaymentTransaction extends Model {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'amount', 'payment_gateway', 'order_id', 'payment_id', 'payment_signature', 'payment_status', 'school_id'];
+    protected $fillable = ['user_id', 'amount', 'payment_gateway', 'order_id', 'payment_id', 'payment_signature', 'payment_status', 'school_id', 'date'];
 
     // protected $connection = 'mysql';
 

@@ -326,7 +326,8 @@ function getCategoryAdjustedFee($row)
                 $admissionFees = $admissionFees - $discount;
                 $breakup[$cat] = [
                     'months' => 0,
-                    'month_names' => ['Admission Fees'],
+                    // 'month_names' => ['Admission Fees'],
+                    'month_names' => [],
                     'fee_per_month' => $admissionFees,
                     'total' => $admissionFees,
                 ];
@@ -337,7 +338,8 @@ function getCategoryAdjustedFee($row)
 
                 $breakup[$cat] = [
                     'months' => 0,
-                    'month_names' => ['Book Fee'],
+                    // 'month_names' => ['Book Fee'],
+                    'month_names' => [],
                     'fee_per_month' => $book['price'],
                     'total' => $book['price'],
                 ];
@@ -381,6 +383,8 @@ function getCategoryAdjustedFee($row)
                 $months = [];
                 $temp = $from->copy();
                 while ($temp <= $to) {
+                    $months = array();
+                    // $months[] = $temp->format('F');
                     $months[] = $temp->format('F');
                     $temp->addMonth();
                 }
