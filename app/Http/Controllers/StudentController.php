@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Exports\StudentDataExport;
 use App\Imports\StudentsImport;
+use App\Imports\PaymentsImport;
+use App\Models\PaymentTransaction;
 use App\Models\School;
 use App\Models\User;
+use App\Models\UserCharge;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
 use App\Repositories\ClassSection\ClassSectionInterface;
 use App\Repositories\FormField\FormFieldsInterface;
@@ -314,7 +317,10 @@ class StudentController extends Controller {
             //     ['btn-gradient-primary', 'enroll-face'], // button style
             //     ['title' => __('Enroll Face')] // tooltip
             // );
+            $operate .= '<a href="' . route('fees.compulsory.index', [1, $row->guardian->id]) . '" class="compulsory-data dropdown-item" title="' . trans('Compulsory Fees') . '"><i class="fa fa-dollar text-success mr-2"></i></a>';
+
             $operate .= '<a href="https://faceapp.test/index.php?id=' . $row->user_id . '&name=' . urlencode($row->name) . '" target="_blank" class="btn btn-sm btn-info">Enroll Face</a>';
+
             if (!$request->show_deactive) {
                 if (Auth::user()->can('student-edit')) {
                     $operate .= BootstrapTableService::editButton(route('students.update', $row->user->id, ['data-id' => $row->id]));
@@ -586,6 +592,71 @@ class StudentController extends Controller {
         }
         try {
             Excel::import(new StudentsImport($request->class_section_id, $request->session_year_id, $request->is_send_notification), $request->file);
+            ResponseService::successResponse('Data Stored Successfully');
+        } catch (ValidationException $e) {
+            if ($e instanceof TypeError && Str::contains($e->getMessage(), [
+                'Failed',
+                'Mail',
+                'Mailer',
+                'MailManager'
+            ])) {
+                DB::commit();
+                ResponseService::warningResponse("Student Registered successfully. But Email not sent.");
+            } else {
+                ResponseService::errorResponse($e->getMessage());
+            }
+        } catch (Throwable $e) {
+            ResponseService::logErrorResponse($e, "Student Controller -> Store Bulk method");
+            ResponseService::errorResponse();
+        }
+    }
+
+
+    public function dueSlips()
+    {
+        ResponseService::noFeatureThenRedirect('Fees Management');
+
+        try {
+            $guardians = User::with(['child.user', 'child.class_section.class'])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+
+            if ($guardians->isEmpty()) {
+                return back()->with('error', 'No guardians with children found.');
+            }
+
+            $pdf = \PDF::loadView('fees.due-slip', compact('guardians'))
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->stream('due-slips.pdf');
+        } catch (\Throwable $e) {
+            ResponseService::logErrorResponse($e, 'FeesController -> dueSlips');
+            return ResponseService::errorResponse();
+        }
+    }
+
+    public function createBulkPaymentData() {
+        ResponseService::noPermissionThenRedirect('student-create');
+        $class_section = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
+        $sessionYears = $this->sessionYear->all();
+        return view('students.add_bulk_payment_data', compact('class_section', 'sessionYears'));
+    }
+
+    public function storeBulkPayments(Request $request) {
+        ResponseService::noPermissionThenRedirect('student-create');
+        $validator = Validator::make($request->all(), [
+            'session_year_id'  => 'required|numeric',
+            // 'class_section_id' => 'required',
+            'file'             => 'required|mimes:csv,txt'
+        ]);
+        if ($validator->fails()) {
+            ResponseService::errorResponse($validator->errors()->first());
+        }
+        try {
+            Excel::import(new PaymentsImport($request->class_section_id, $request->session_year_id, $request->is_send_notification), $request->file);
             ResponseService::successResponse('Data Stored Successfully');
         } catch (ValidationException $e) {
             if ($e instanceof TypeError && Str::contains($e->getMessage(), [

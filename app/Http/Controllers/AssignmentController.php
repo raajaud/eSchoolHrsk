@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Assignment;
+use App\Models\SubjectTeacher;
 use App\Repositories\Assignment\AssignmentInterface;
 use App\Repositories\AssignmentCommon\AssignmentCommonInterface;
 use App\Repositories\AssignmentSubmission\AssignmentSubmissionInterface;
@@ -54,16 +55,18 @@ class AssignmentController extends Controller
 
     public function index()
     {
+
         ResponseService::noFeatureThenRedirect('Assignment Management');
         ResponseService::noPermissionThenRedirect('assignment-list');
-        $assignment = $this->assignment->builder()->with('class_section.class', 'class_section.section', 'class_section.medium', 'file', 'class_subject.subject', 'assignment_commons')->first();
+        $assignment = Assignment::with('class_section.class', 'class_section.section', 'class_section.medium', 'file', 'class_subject.subject', 'assignment_commons')->first();
         $classSections = $this->classSection->builder()->with('class', 'class.stream', 'section', 'medium')->get();
-        $subjectTeachers = $this->subjectTeacher->builder()->with('subject:id,name,type')->get();
+        // dd($assignment);
+        $subjectTeachers = SubjectTeacher::with('subject:id,name,type')->get();
         $sessionYears = $this->sessionYear->all();
-
+        // dd($subjectTeachers);
         $user = Auth::user();
 
-       
+
         return response(view('assignment.index', compact('assignment', 'classSections', 'subjectTeachers', 'sessionYears')));
     }
 
@@ -87,11 +90,11 @@ class AssignmentController extends Controller
             'add_url'          => $request->checkbox_add_url ? 'required' : 'nullable',
         ],[
             'file.*' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
+                'file_upload_size_limit' => $file_upload_size_limit,
             ]),
         ]);
         try {
-            DB::beginTransaction();
+            // DB::beginTransaction();
 
             $sessionYear = $this->cache->getDefaultSessionYear();
 
@@ -107,11 +110,11 @@ class AssignmentController extends Controller
             $section_ids = is_array($request->class_section_id) ? $request->class_section_id : [$request->class_section_id];
             $assignment = [];
             $assignmentCommonData = [];
-        
+
             foreach ($section_ids as $section_id) {
                 $assignmentData = array_merge($assignmentData, ['class_section_id' => $section_id]);
             }
-        
+
             // Get class_section_id to class_subject_id
             $classSection = [];
             if ($request->class_section_id) {
@@ -121,13 +124,14 @@ class AssignmentController extends Controller
                     }])->first();
                 }
             }
-        
+
             // Store the assignment data
             $assignmentData['class_subject_id'] = $classSection->class_subject->id;
+            $assignmentData['school_id'] = 5;
             unset($assignmentData['subject_id']);
             unset($assignmentData['user_id']);
-            $assignment = $this->assignment->create($assignmentData);
-           
+            $assignment = Assignment::create($assignmentData);
+            // dd($assignment);
 
             // Create assignment_commons for each section
             foreach ($section_ids as $section_id) {
@@ -141,73 +145,73 @@ class AssignmentController extends Controller
                 $assignmentCommonData['class_subject_id'] = $classSubjects->id;
                 $this->assignmentCommon->create($assignmentCommonData);
             }
-        
+
             // Handle File Upload
             if ($request->hasFile('file')) {
                 $fileData = [];
-        
+
                 $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-        
+
                 foreach ($request->file('file') as $file_upload) {
                     $tempFileData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
                         'file_name'  => $file_upload->getClientOriginalName(),
                         'type'       => 1,
-                        'file_url'   => $file_upload, 
+                        'file_url'   => $file_upload,
                     );
                     $fileData[] = $tempFileData;
                 }
-        
+
                 // Store the files data
                 $this->files->createBulk($fileData);
             }
-        
+
             // Handle URL Upload
             if ($request->add_url) {
                 $urlData = [];
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-        
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']);
-        
+
                     $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-        
+
                     $tempUrlData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
-        
+
                     $urlData[] = $tempUrlData;
                 }
-        
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }
-        
+
             // Send Notification
             $subjectName = $this->subject->builder()->select('name')->where('id', $request->subject_id)->pluck('name')->first();
             $title = 'New assignment added in ' . $subjectName;
             $body = $request->name;
             $type = "assignment";
-        
+
             // Get student and guardian IDs for notifications
             $students = $this->student->builder()->where('class_section_id', $request->class_section_id)->get();
             $guardian_id = $students->pluck('guardian_id')->toArray();
             $student_id = $students->pluck('user_id')->toArray();
             $user = array_merge($student_id, $guardian_id);
-        
+
             send_notification($user, $title, $body, $type);
-        
+
             DB::commit();
             ResponseService::successResponse('Data Stored Successfully');
         } catch (Throwable $e) {
             DB::rollBack();
-        
+
             if (Str::contains($e->getMessage(), ['does not exist', 'file_get_contents'])) {
                 ResponseService::warningResponse("Data Stored successfully. But App push notification not send.");
             } else {
@@ -284,7 +288,7 @@ class AssignmentController extends Controller
             $assignmentCommons = $row->assignment_commons->map(function ($common) {
                 return $common->class_section ? $common->class_section->full_name : null;
             });
-            
+
             $assignmentCommons->filter()->map(function ($name) {
                 return "{$name},";
             })->toArray();
@@ -338,8 +342,8 @@ class AssignmentController extends Controller
             'file.*'                      => ['mimes:jpeg,png,jpg,gif,svg,webp,pdf,doc,docx,xml', new MaxFileSize($file_upload_size_limit) ]
         ],[
             'file.*' => trans('The file Uploaded must be less than :file_upload_size_limit MB.', [
-                'file_upload_size_limit' => $file_upload_size_limit,  
-            ]), 
+                'file_upload_size_limit' => $file_upload_size_limit,
+            ]),
         ]);
         try {
             DB::beginTransaction();
@@ -354,7 +358,7 @@ class AssignmentController extends Controller
                 'session_year_id'             => $sessionYear->id,
                 'edited_by'                   => Auth::user()->id,
             );
-            
+
             $section_ids = is_array($request->class_section_id) ? $request->class_section_id : [$request->class_section_id];
             foreach ($section_ids as $section_id) {
                 $assignmentData = array_merge($assignmentData, ['class_section_id' => $section_id]);
@@ -384,26 +388,26 @@ class AssignmentController extends Controller
 
             if ($request->add_url) {
                 $urlData = array(); // Empty URL data array
-            
+
                 $urls = is_array($request->add_url) ? $request->add_url : [$request->add_url];
-            
+
                 foreach ($urls as $url) {
                     $urlParts = parse_url($url);
                     $fileName = basename($urlParts['path']); // Extract the file name from the URL
-            
+
                     $assignmentModelAssociate = $this->files->model()->modal()->associate($assignment);
-            
+
                     $tempUrlData = array(
                         'modal_type' => $assignmentModelAssociate->modal_type,
                         'modal_id'   => $assignmentModelAssociate->modal_id,
-                        'file_name'  => $fileName, 
+                        'file_name'  => $fileName,
                         'type'       => 4,
                         'file_url'   => $url,
                     );
-            
+
                     $urlData[] = $tempUrlData; // Store temp URL data in the array
                 }
-            
+
                 // Store the URL data
                 $this->files->createBulk($urlData);
             }

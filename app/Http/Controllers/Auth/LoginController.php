@@ -113,10 +113,10 @@ class LoginController extends Controller
                 $user = Auth::guard('web')->user();
 
                 // Web Login in Student/Guardian Not Allowed (only App Login)
-                if($user->hasRole('Student') || $user->hasRole('Guardian')) {
-                    Auth::logout();
-                    return redirect()->route('login')->with('error', 'You are not authorized to access Web Login (Student/Guardian)');
-                }
+                // if($user->hasRole('Student') || $user->hasRole('Guardian')) {
+                //     Auth::logout();
+                //     return redirect()->route('login')->with('error', 'You are not authorized to access Web Login (Student/Guardian)');
+                // }
 
                 // Set custom session data
                 session(['user_id' => $user->id]);
@@ -131,21 +131,21 @@ class LoginController extends Controller
                 $data = DB::table('users')->where('email',$request->email)->first();
 
                 if ($data && $school->status == 1) {
-                    if (( $data->two_factor_secret == null || $data->two_factor_expires_at == null ) && $data->two_factor_enabled == 1 && !Auth::user()->hasRole('Teacher') && $request->email != 'demo@school.com' && !env('DEMO_MODE')) {
-                        $twoFACode = $this->generate2FACode();
-                        $settings = $this->cache->getSystemSettings();
-                        $user = Auth::user();
+                    // if (( $data->two_factor_secret == null || $data->two_factor_expires_at == null ) && $data->two_factor_enabled == 1 && !Auth::user()->hasRole('Teacher') && $request->email != 'demo@school.com' && !env('DEMO_MODE')) {
+                    //     $twoFACode = $this->generate2FACode();
+                    //     $settings = $this->cache->getSystemSettings();
+                    //     $user = Auth::user();
 
-                        DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => $twoFACode, 'updated_at' => Carbon::now()]);
+                    //     DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => $twoFACode, 'updated_at' => Carbon::now()]);
 
-                        $schools = DB::table('users')->where('email',$user->email)->first();
+                    //     $schools = DB::table('users')->where('email',$user->email)->first();
 
-                        $this->send2FAEmail($schools, $user, $settings, $twoFACode);
+                    //     $this->send2FAEmail($schools, $user, $settings, $twoFACode);
 
-                        return redirect()->route('auth.2fa');
-                    } else {
+                    //     return redirect()->route('auth.2fa');
+                    // } else {
                         return redirect()->intended('/dashboard');
-                    }
+                    // }
                 }
 
 
@@ -176,22 +176,22 @@ class LoginController extends Controller
                 $data = DB::table('users')->where('email',$request->email)->first();
 
                 if ($data) {
-                    if (( $data->two_factor_secret == null || $data->two_factor_expires_at == null ) && $data->two_factor_enabled == 1 && !Auth::user()->hasRole('Teacher') && $request->email != 'superadmin@gmail.com' && !env('DEMO_MODE')) {
+                    // if (( $data->two_factor_secret == null || $data->two_factor_expires_at == null ) && $data->two_factor_enabled == 1 && !Auth::user()->hasRole('Teacher') && $request->email != 'superadmin@gmail.com' && !env('DEMO_MODE')) {
 
-                        $twoFACode = $this->generate2FACode();
-                        $settings = $this->cache->getSystemSettings();
-                        $user = Auth::user();
+                    //     $twoFACode = $this->generate2FACode();
+                    //     $settings = $this->cache->getSystemSettings();
+                    //     $user = Auth::user();
 
-                        DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => $twoFACode, 'updated_at' => Carbon::now()]);
+                    //     DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => $twoFACode, 'updated_at' => Carbon::now()]);
 
-                        $adminData = DB::table('users')->where('email',$user->email)->first();
-                        // dd('done',$adminData);
-                        $this->send2FAEmail($adminData, $user, $settings, $twoFACode);
+                    //     $adminData = DB::table('users')->where('email',$user->email)->first();
+                    //     // dd('done',$adminData);
+                    //     $this->send2FAEmail($adminData, $user, $settings, $twoFACode);
 
-                        return redirect()->route('auth.2fa');
-                    } else {
+                    //     return redirect()->route('auth.2fa');
+                    // } else {
                         return redirect()->intended('/dashboard');
-                    }
+                    // }
                 }
 
                 session(['db_connection_name' => 'mysql']);
@@ -244,7 +244,7 @@ class LoginController extends Controller
             \Log::info('2FA code sent to: ' . $data['email']);
         } catch (\Throwable $th) {
             if (Str::contains($th->getMessage(), ['Failed', 'Mail', 'Mailer', 'MailManager'])) {
-                ResponseService::warningResponse("Message send successfully. But Email not sent.");
+                ResponseService::warningResponse("Message send successfullyy. But Email not sent.");
             } else {
                 ResponseService::errorResponse(trans('error_occured'));
             }

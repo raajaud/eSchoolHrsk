@@ -100,6 +100,37 @@
                                 <input class="btn btn-theme float-right ml-3" id="create-btn" {{ $disabled }} type="submit" value={{ __('submit') }}>
                             </form>
                         </div>
+                        <br><br><br><br><br>
+                        <div class="form-group">
+
+                            <!-- Inside your exams.timetable view or a dedicated import page -->
+                            <form action="{{ route('exams.timetable.import', $exam->id) }}" method="POST" enctype="multipart/form-data">
+                                @csrf
+                                <div class="form-group">
+                                    <label for="csv_file">Upload Exam Timetable CSV/Excel</label>
+                                    <input type="file" class="form-control" id="csv_file" name="file" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="last_result_submission_date">Last Result Submission Date</label>
+                                    <input type="text" class="form-control date-picker" id="last_result_submission_date" name="last_result_submission_date" required placeholder="DD-MM-YYYY">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">Import Timetable</button>
+                            </form>
+
+                            <!-- Example of how to display errors from ResponseService::errorResponse -->
+                            @if (session('error'))
+                                <div class="alert alert-danger">
+                                    {!! session('error') !!}
+                                </div>
+                            @endif
+                            @if (session('success'))
+                                <div class="alert alert-success">
+                                    {{ session('success') }}
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

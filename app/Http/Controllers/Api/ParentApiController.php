@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TimetableCollection;
 use App\Http\Resources\UserDataResource;
+use App\Models\Point;
 use App\Models\School;
 use App\Repositories\Announcement\AnnouncementInterface;
 use App\Repositories\Assignment\AssignmentInterface;
@@ -438,6 +439,34 @@ class ParentApiController extends Controller {
             ResponseService::errorResponse();
         }
     }
+
+
+    public function getLeaderboard()
+    {
+        try {
+            // Get top 5 students by total points
+            $topStudents = Point::select('child_id', DB::raw('SUM(points) as score'))
+                ->groupBy('child_id')
+                ->orderByDesc('score')
+                ->take(5)
+                ->with('student:id,first_name,last_name')
+                ->get();
+
+            $data = $topStudents->map(function ($item) {
+                return [
+                    'id'    => $item->child_id,
+                    'name'  => $item->student->first_name . ' ' . $item->student->last_name,
+                    'score' => (int) $item->score,
+                ];
+            });
+
+            ResponseService::successResponse('Leaderboard Fetched Successfully', $data);
+        } catch (Throwable $e) {
+            ResponseService::logErrorResponse($e);
+            ResponseService::errorResponse();
+        }
+    }
+
 
 
     public function getTeachers(Request $request) {

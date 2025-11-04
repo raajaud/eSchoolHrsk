@@ -102,14 +102,14 @@
                     <td>{{ $result->user->full_name }}</td>
                     <th class="text-left">DOB :</th>
                     <td>{{ date($settings['date_format'], strtotime($result->user->dob)) }}</td>
-                    <th class="text-left">GR No. :</th>
+                    <th class="text-left">Admission No. :</th>
                     <td>{{ $result->user->student->admission_no }}</td>
                 </tr>
                 <tr>
                     <th class="text-left">Guardian Name :</th>
                     <td>{{ $result->user->student->guardian->full_name }}</td>
                     <th class="text-left">Class :</th>
-                    <td>{{ $result->user->student->class_section->full_name }}</td>
+                    <td>{{ $result->user->student->class_section->name }}</td>
                     <th class="text-left">Roll No. :</th>
                     <td>{{ $result->user->student->roll_number }}</td>
                 </tr>
@@ -140,7 +140,7 @@
                 @foreach ($result->user->exam_marks as $mark)
                     <tr>
                         <td class="text-center">{{ ($loop->index + 1) }}</td>
-                        <td>{{ $mark->class_subject->subject_with_name }}</td>
+                        <td>{{ $mark->class_subject->subject->name }}</td>
                         <td class="text-center">{{ $mark->timetable->total_marks }}</td>
                         <td class="text-center">{{ $mark->obtained_marks }}</td>
                         <td class="text-center">{{ $mark->grade }}</td>
@@ -163,7 +163,7 @@
                         @if ($result->status == 1)
                             Pass
                         @else
-                            Fail                            
+                            Fail
                         @endif
                     </td>
                     <th>Percentage :</th>

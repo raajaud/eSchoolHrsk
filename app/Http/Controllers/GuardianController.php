@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Repositories\User\UserInterface;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
 use App\Repositories\Section\SectionInterface;
@@ -83,7 +84,7 @@ class GuardianController extends Controller {
                 $q->where('class_section_id', $request->class_section_id);
             });
         }
-       
+
         $sql = $sql->owner();
 
         if (!empty($_GET['search'])) {
@@ -169,5 +170,22 @@ class GuardianController extends Controller {
             ];
         }
         return response()->json($response);
+    }
+
+    public function searchAjax(Request $request)
+    {
+        ResponseService::noAnyPermissionThenSendJson(['student-create', 'student-edit']);
+
+        $query = trim($request->input('query'));
+
+        $users = User::where(function ($q) use ($query) {
+                $q->where('email', 'like', "%{$query}%")
+                ->orWhere('first_name', 'like', "%{$query}%")
+                ->orWhere('last_name', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get();
+        // dd($users);
+        return view('partials.user_search_results', compact('users'));
     }
 }

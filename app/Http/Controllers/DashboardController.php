@@ -73,7 +73,7 @@ class DashboardController extends Controller {
     }
 
     public function index() {
-
+        // dd(Auth::user()->school_id);
         if(( Auth::user()->hasRole('Super Admin') || Auth::user()->hasRole('School Admin')) && Auth::user()->two_factor_enabled == 1 && !Auth::user()->two_factor_expires_at && Auth::user()->email != 'superadmin@gmail.com' && Auth::user()->email != 'demo@school.com') {
             $user = Auth::user();
             DB::table('users')->where('email',$user->email)->update(['two_factor_secret' => null,'two_factor_expires_at' => null]);

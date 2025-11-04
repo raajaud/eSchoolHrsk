@@ -186,6 +186,10 @@ class User extends Authenticatable implements MustVerifyEmail {
     }
 
 
+    public function total_paid() {
+        return $this->hasMany(PaymentTransaction::class, 'user_id')->withTrashed();
+    }
+
     public function fees_paids() {
         return $this->hasMany(FeesPaid::class, 'student_id')->withTrashed();
     }
@@ -352,5 +356,53 @@ class User extends Authenticatable implements MustVerifyEmail {
     public function extra_user_datas()
     {
         return $this->hasMany(ExtraStudentData::class, 'user_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(\App\Models\PaymentTransaction::class, 'user_id');
+    }
+
+    public function charges()
+    {
+        return $this->hasMany(\App\Models\UserCharge::class, 'user_id');
+    }
+
+    public function getTotalPaidAttribute()
+    {
+        return $this->payments()->sum('amount');
+    }
+
+    public function getTotalFeesAttribute()
+    {
+        return $this->charges()->sum('amount');
+    }
+
+    public function getMonthlyDueAttribute()
+    {
+        $monthYear = now()->format('F-Y');
+
+        return $this->charges()
+            ->where('charge_type', 'monthly_fees')
+            ->where('description', 'like', "%{$monthYear}%")
+            ->sum('amount');
+    }
+
+    public function getDueMonthAttribute()
+    {
+        $monthYear = now()->format('F-Y');
+
+        $charge = $this->charges()
+            ->where('charge_type', 'monthly_fees')
+            ->where('description', 'like', "%{$monthYear}%")
+            ->first();
+
+        return $charge ? $charge->description : null;
+    }
+
+    public function lastPayment()
+    {
+        return $this->hasOne(PaymentTransaction::class, 'user_id')
+            ->latest('date');
     }
 }

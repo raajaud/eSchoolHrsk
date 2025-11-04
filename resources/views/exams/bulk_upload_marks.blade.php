@@ -21,7 +21,7 @@
                         <form action="{{ route('exam.store-bulk-data') }}" class="create-form" id="formdata" data-success-function="formSuccessFunction">
                             @csrf
                             <div class="row">
-                                <div class="form-group col-sm-12 col-md-4">
+                                {{-- <div class="form-group col-sm-12 col-md-4">
                                     <label for="">{{ __('class_section') }}<span class="text-danger">*</span></label>
                                     <select name="class_section_id" id="class_section_id" required class="form-control">
                                         <option value="">-- {{ __('select_class_section') }} --</option>
@@ -41,7 +41,7 @@
                                     <select required name="class_subject_id" id="subject_id" class="form-control select2" style="width:100%;" tabindex="-1" aria-hidden="true">
                                         <option value="">{{ __('select') . ' ' . __('subject')}}</option>
                                     </select>
-                                </div>
+                                </div> --}}
                                 <div class="form-group col-sm-12 col-md-4">
                                     <label for="file-upload-default">{{ __('file_upload') }} <span class="text-danger">*</span></label>
                                     <input type="file" name="file" class="file-upload-default" />
@@ -57,8 +57,8 @@
                                     <input class="btn btn-theme submit_bulk_file float-right" type="submit" value="{{ __('submit') }}" name="submit" id="submit_bulk_file">
                                 </div>
                             </div>
-                        </form>    
-                       
+                        </form>
+
                         <div id="downloadDummyFile" style="display: none">
                             <div class="row">
                                 <div class="form-group col-sm-12 col-md-4 mt-5">
@@ -102,7 +102,7 @@
             const classSubjectId = document.getElementById('subject_id').value;
 
             const downloadUrl = `{{ route('exam.download-sample-file') }}?class_section_id=${classSectionId}&exam_id=${examId}&class_subject_id=${classSubjectId}`;
-           
+
             const anchor = document.createElement('a');
             anchor.href = downloadUrl;
             document.body.appendChild(anchor);

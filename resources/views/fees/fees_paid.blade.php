@@ -168,7 +168,7 @@
                                     <th scope="col" data-field="student.class_section.full_name" data-sortable="false" data-align="center">{{ __('Class') }}</th>
                                     <th scope="col" data-field="fees.total_compulsory_fees" data-sortable="false" data-align="center">Total Fees</th>
                                     <th scope="col" data-field="fees.total_optional_fees" data-sortable="false" data-align="center">Total Paid</th>
-                                    <th scope="col" data-field="payment_method" data-sortable="false" data-align="center"> Dues</th>
+                                    <th scope="col" data-field="payment_method" data-sortable="true" data-align="center"> Dues</th>
                                     <th scope="col" data-field="fees_status" data-sortable="false" data-formatter="feesPaidStatusFormatter" data-align="center"> {{ __('Fees Status') }}</th>
                                     <th scope="col" data-field="fees_paid.date" data-formatter="dateFormatter" data-sortable="false" data-align="center">{{ __('Date') }}</th>
                                     <th scope="col" data-field="paid_amount" data-sortable="false">{{ __('paid_amount') }}</th>

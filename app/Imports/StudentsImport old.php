@@ -216,7 +216,10 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
 
                 $user = $userService->createStudentUser($first_name, $last_name, $admission_no, $row['mobile'], $row['dob']??'', $row['gender'], null, $classSectionID, $row['admission_date'],$row['current_address'],$row['permanent_address'], $sessionYear->id, $guardian->id, $extraDetails, 1, $this->is_send_notification, $row['monthly_fees']);
 
+
+
                 if($row['payments']){
+
                     $payments = explode(',', $row['payments']);
                     if (!$guardian) {
                         continue;
@@ -239,7 +242,7 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                         $totalPayments += $amount; // accumulate payment total
 
                         $date = Carbon::createFromFormat('d-m-Y', $date)->format('Y-m-d');
-
+                        dd($date);
                         PaymentTransaction::create([
                             'user_id'           => $guardian->id,
                             'amount'            => $amount,
@@ -272,6 +275,7 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                         'charge_date' => $date, // from loop last iteration
                     ]);
                 }
+
 
             } catch (Throwable $e) {
                 // IF Exception is TypeError and message contains Mail keywords then email is not sent successfully

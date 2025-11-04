@@ -48,7 +48,7 @@
                                     @endforeach
                                 @endif
 
-                                @if (!empty($subjectWithoutTeacherAssigned) && count($subjectWithoutTeacherAssigned) > 0 && isset($subjectTeacher))       
+                                @if (!empty($subjectWithoutTeacherAssigned) && count($subjectWithoutTeacherAssigned) > 0 && isset($subjectTeacher))
                                     @foreach ($subjectWithoutTeacherAssigned as $subject)
                                         <div class='fc-event fc-h-event fc-div-color fc-daygrid-event fc-daygrid-block-event'
                                             style="background-color: {{ $subject->bg_color }}"

@@ -98,6 +98,7 @@ Route::group(['prefix' => 'parent'], static function () {
         // });
         Route::group(['middleware' => ['APISwitchDatabase']], static function () {
             Route::get('test', [ParentApiController::class, 'test']);
+            Route::get('leaderboard', [ParentApiController::class, 'getLeaderboard']);
 
             Route::group(['middleware' => ['checkChild','APISwitchDatabase']], static function () {
                 Route::get('subjects', [ParentApiController::class, 'subjects']);

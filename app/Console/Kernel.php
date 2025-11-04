@@ -20,6 +20,12 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('subscriptionBill:cron')->daily();
+        $schedule->command('quote:publish')->dailyAt('05:00');
+        $schedule->command('word:publish')->dailyAt('05:00');
+        $schedule->command('fees:update-monthly')
+        ->monthlyOn(1, '00:30')
+        ->withoutOverlapping();
+
     }
 
     /**

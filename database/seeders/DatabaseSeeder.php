@@ -12,9 +12,9 @@ class DatabaseSeeder extends Seeder {
      */
     public function run() {
         $this->call([
-            InstallationSeeder::class,
-            AddSuperAdminSeeder::class,
-            // DummyDataSeeder::class
+            // InstallationSeeder::class,
+            // AddSuperAdminSeeder::class,
+            DailyWordSeeder::class
         ]);
     }
 }

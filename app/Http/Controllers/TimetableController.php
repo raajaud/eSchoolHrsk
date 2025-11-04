@@ -56,7 +56,7 @@ class TimetableController extends Controller {
 
         $classes = $this->class->builder()->with('stream')->get()->pluck('full_name','id');
         $mediums = $this->medium->builder()->pluck('name','id');
-        
+
 
         return view('timetable.index', compact('timetableData','classes','mediums'));
     }
@@ -126,7 +126,7 @@ class TimetableController extends Controller {
         $schoolSettings = $this->cache->getSchoolSettings();
         $timetable_start_time = Carbon::createFromFormat('H:i:s',$schoolSettings['timetable_start_time'])->format('H:i:s');
         $timetable_end_time = Carbon::createFromFormat('H:i:s',$schoolSettings['timetable_end_time'])->format('H:i:s');
-        
+
         try {
             if ($timetable_start_time <= $start_time && $timetable_end_time >= $end_time) {
                 $this->timetable->updateOrCreate(['id' => $id,], $request->all());
@@ -164,7 +164,7 @@ class TimetableController extends Controller {
             }]);
         }
 
-        
+
         if (!empty($request->search)) {
             $search = $request->search;
             $sql->where(function ($query) use ($search) {
@@ -292,31 +292,31 @@ class TimetableController extends Controller {
                 $q->where('id', $request->class_id);
             });
         }
-        
+
         if (!empty($request->section_id)) {
             $sql->whereHas('timetable.class_section.section', function ($q) use ($request) {
                 $q->where('id', $request->section_id);
             });
         }
-        
+
         if (!empty($request->subject_id)) {
             $sql->whereHas('timetable.subject', function ($q) use ($request) {
                 $q->where('id', $request->subject_id);
             });
         }
-        
+
         if (!empty($request->teacher_id)) {
             $sql->where('id', $request->teacher_id);
         }
-        
+
         if (!empty($request->status)) {
             $sql->where('status', $request->status);
         }
-        
+
         if (!empty($request->role)) {
             $sql->where('role', $request->role);
         }
-        
+
         if (!empty($request->created_at)) {
             $sql->whereDate('created_at', '=', $request->created_at);
         }

@@ -2,13 +2,14 @@
 <nav class="sidebar sidebar-offcanvas" id="sidebar">
 
     <div class="sidebar-search pl-4 pr-4">
-        <input type="text" id="menu-search" placeholder="{{ __('search_menu') }}" class="form-control menu-search border-theme form-control-sm">
+        <input type="text" id="menu-search" placeholder="Search Students" class="form-control menu-search border-theme form-control-sm" autocomplete="off">
     </div>
 
     <div class="sidebar-search pl-4 pr-4 mt-2">
-        <input type="text" id="menu-search-mini" placeholder="{{ __('search_menu') }}" class="form-control d-lg-none border-theme">
+        <input type="text" id="menu-search-mini" placeholder="Search Students" class="form-control d-lg-none border-theme" autocomplete="off">
     </div>
-
+    <div id="search-results" style="position:absolute; background:#fff; z-index:999; width:90%; left:20px; border:1px solid #ccc; border-radius:4px; overflow:hidden;">
+    </div>
     <ul class="nav">
         {{-- dashboard --}}
         <li class="nav-item">
@@ -90,6 +91,24 @@
             @endcan
         @endrole
 
+
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#student-assembly" aria-expanded="false" aria-controls="academics-menu">
+                <i class="fa fa-graduation-cap menu-icon"></i>
+                <span class="menu-title">School Assembly</span>
+                <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="student-assembly">
+                <ul class="nav flex-column sub-menu">
+
+                    <li class="nav-item"><a href="{{ route('thought.index') }}" class="nav-link">Thoughts</a></li>
+                    <li class="nav-item"><a href="{{ route('word.index') }}" class="nav-link">Words</a></li>
+
+
+                </ul>
+            </div>
+        </li>
+
         {{-- Class Section For Teacher --}}
         @role('Teacher')
         <li class="nav-item">
@@ -133,6 +152,15 @@
                         @can('student-create')
                             <li class="nav-item"><a href="{{ route('students.create-bulk-data') }}" class="nav-link">{{ __('add_bulk_data') }}</a></li>
                         @endcan
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.create-bulk-data-payments') }}" class="nav-link">Add Bulk Payments</a></li>
+                        @endcan
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.due-slips') }}" class="nav-link">Get Due Slips</a></li>
+                        @endcan
+
 
                         @can('student-edit')
                             <li class="nav-item"><a href="{{ route('students.upload-profile') }}" class="nav-link">{{ __('upload_profile_images') }}</a></li>

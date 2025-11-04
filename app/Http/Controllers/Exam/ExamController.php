@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Exam;
 use App\Exports\MarksDataExport;
 use App\Imports\MarksDataImport;
 use App\Http\Controllers\Controller;
+use App\Models\ClassSchool;
+use App\Models\ClassSubject;
 use App\Models\ExamResult;
 use App\Models\ExamTimetable;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -35,6 +37,9 @@ use Excel;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 use App\Models\ClassTeacher;
+use App\Models\Exam;
+use App\Models\Subject;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 use function PHPUnit\Framework\isEmpty;
@@ -96,6 +101,7 @@ class ExamController extends Controller
         $request->validate(['name' => 'required', 'session_year_id' => 'required',]);
 
         try {
+            $currentSessionYear = $this->cache->getDefaultSessionYear();
             $examData = array(); // Initialize examData with Empty Array
             // Loop towards Classes
             foreach ($request->class_id as $classId) {
@@ -108,8 +114,111 @@ class ExamController extends Controller
             }
             $this->exam->createBulk($examData); // Store The Exam Data According to Class
 
+            $exams = Exam::where('name', $request->name)
+                ->where('description', $request->description)
+                ->where('session_year_id', $request->session_year_id)
+                ->whereIn('class_id', $request->class_id)
+                ->get();
+            // dd($currentSessionYear->id);
+
             $classSectionIds = $this->classSection->builder()->whereIn('class_id', $request->class_id)->pluck('id');
             $classTeacherIds = $this->classTeacher->builder()->whereIn('class_section_id', $classSectionIds)->distinct()->pluck('teacher_id')->toArray();
+
+            $path = $request->file('file')->getRealPath();
+            $csvData = array_map('str_getcsv', file($path));
+            $header = array_shift($csvData);
+            $header = array_map(fn($h) => strtolower(str_replace(' ', '_', trim($h))), $header);
+
+
+            $classMap = [
+                '1' => 'Class I',
+                '2' => 'Class II',
+                '3' => 'Class III',
+                '4' => 'Class IV',
+                '5' => 'Class V',
+                '6' => 'Class VI',
+                '7' => 'Class VII',
+                '8' => 'Class VIII',
+                '9' => 'Class IX',
+                '10' => 'Class X',
+                '11' => 'Class XI',
+                '12' => 'Class XII',
+                'Nursery' => 'Nursery',
+                'LKG' => 'LKG',
+                'UKG' => 'UKG',
+            ];
+
+            $data = [];
+
+            foreach ($csvData as $row) {
+                $row = array_combine($header, $row);
+
+                $date = Carbon::createFromFormat('d-m-Y', $row['date'])->format('Y-m-d');
+                $startTime = Carbon::createFromFormat('h:i A', $row['start_time'])->format('H:i:s');
+                $endTime = Carbon::createFromFormat('h:i A', $row['end_time'])->format('H:i:s');
+
+                // Convert class keys (1|2|3) → class names (Class 1, Class 2, etc.)
+                $classKeys = explode('|', $row['classes']);
+                $classNames = array_map(fn($key) => $classMap[trim($key)] ?? trim($key), $classKeys);
+
+                // Get all matching class IDs
+                $classIds = ClassSchool::whereIn('name', $classNames)->pluck('id')->toArray();
+
+                // Get exams for these classes (same exam name)
+                $examByClass = Exam::where('name', $request->name)
+                    ->whereIn('class_id', $classIds)
+                    ->pluck('id', 'class_id')   // [class_id => exam_id]
+                    ->toArray();
+
+                // Get all subjects for the given subject name (same across classes)
+                $subject = Subject::where('name', $row['subject_name'])->first();
+                if (!$subject) continue;
+
+                // Get all class_subjects for this subject in given classes
+                $classSubjects = ClassSubject::whereIn('class_id', $classIds)
+                    ->where('subject_id', $subject->id)
+                    ->pluck('id', 'class_id')   // [class_id => class_subject_id]
+                    ->toArray();
+
+                // Loop through classes → exams → subjects
+                foreach ($classIds as $classId) {
+                    if (!isset($examByClass[$classId]) || !isset($classSubjects[$classId])) continue;
+
+                    $data[] = [
+                        'exam_id'          => $examByClass[$classId],
+                        'class_subject_id' => $classSubjects[$classId],
+                        'total_marks'      => $row['full_mark'],
+                        'passing_marks'    => $row['pass_marks'],
+                        'start_time'       => $startTime,
+                        'end_time'         => $endTime,
+                        'date'             => $date,
+                        'session_year_id'  => $currentSessionYear->id,
+                        'school_id'        => 5,
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
+                    ];
+                }
+            }
+
+            if (!empty($data)) {
+                ExamTimetable::insert($data);
+            }
+
+            $examIds = array_unique(array_values($examByClass));
+
+            foreach ($examIds as $examID) {
+                $examDates = ExamTimetable::where('exam_id', $examID)
+                    ->selectRaw('MIN(date) as start_date, MAX(date) as end_date')
+                    ->first();
+
+                if ($examDates) {
+                    Exam::where('id', $examID)->update([
+                        'start_date'                  => $examDates->start_date,
+                        'end_date'                    => $examDates->end_date,
+                        'last_result_submission_date' => $request->last_result_submission_date,
+                    ]);
+                }
+            }
 
             $title = "Exams Created";
             $body = "New Exam Added Click here to see !!!";
@@ -324,12 +433,19 @@ class ExamController extends Controller
         ResponseService::noFeatureThenRedirect('Exam Management');
         ResponseService::noPermissionThenRedirect('exam-upload-marks');
 
-        $teacherId = Auth::user()->teacher->user_id;
-        $classes = $this->classSection->builder()->whereHas('class_teachers', function ($query) use ($teacherId) {
-            $query->where('teacher_id', $teacherId);
-        })->with('class', 'section', 'medium')->orWhereHas('subject_teachers', function ($q) use ($teacherId) {
-            $q->where('teacher_id', $teacherId);
-        })->get();
+
+        // $teacherId = Auth::user()->teacher->user_id;
+        // $classes = $this->classSection->builder()->whereHas('class_teachers', function ($query) use ($teacherId) {
+        //     $query->where('teacher_id', $teacherId);
+        // })->with('class', 'section', 'medium')->orWhereHas('subject_teachers', function ($q) use ($teacherId) {
+        //     $q->where('teacher_id', $teacherId);
+        // })->get();
+
+        $classes = $this->classSection->builder()
+            ->with('class', 'section', 'medium')
+            ->whereHas('class_teachers')
+            ->orWhereHas('subject_teachers')
+            ->get();
 
         //        $exams = $this->exam->builder()
         //            ->with(['timetable' => function ($query) {
@@ -465,23 +581,32 @@ class ExamController extends Controller
     {
         ResponseService::noFeatureThenRedirect('Exam Management');
         try {
-            $teacherId = Auth::user()->id;
+            // $teacherId = Auth::user()->id;
 
-            $isClassTeacher = ClassTeacher::where('teacher_id', $teacherId)->where('class_section_id', $request->class_section_id)->first();
+            // $isClassTeacher = ClassTeacher::where('teacher_id', $teacherId)->where('class_section_id', $request->class_section_id)->first();
 
 
-            if ($isClassTeacher) {
-                $exam_timetable = ExamTimetable::with(['class_subject', 'subject_teacher'])
-                    ->where('exam_id', $exam_id)
-                    ->get();
-            } else {
-                $exam_timetable = ExamTimetable::with(['class_subject', 'subject_teacher'])
-                    ->whereHas('subject_teacher', function ($query) use ($teacherId) {
-                        $query->where('teacher_id', $teacherId);
-                    })
-                    ->where('exam_id', $exam_id)
-                    ->get();
-            }
+            // if ($isClassTeacher) {
+            //     $exam_timetable = ExamTimetable::with(['class_subject', 'subject_teacher'])
+            //         ->where('exam_id', $exam_id)
+            //         ->get();
+            // } else {
+            //     $exam_timetable = ExamTimetable::with(['class_subject', 'subject_teacher'])
+            //         ->whereHas('subject_teacher', function ($query) use ($teacherId) {
+            //             $query->where('teacher_id', $teacherId);
+            //         })
+            //         ->where('exam_id', $exam_id)
+            //         ->get();
+            // }
+            $exam_timetable = ExamTimetable::with(['class_subject', 'subject_teacher'])
+                ->where('exam_id', $exam_id)
+                ->get();
+
+            // $response = [
+            //     'error' => false,
+            //     'message' => trans('data_fetch_successfully'),
+            //     'data' => $exam_timetable,
+            // ];
 
             $response = array('error' => false, 'message' => trans('data_fetch_successfully'), 'data' => $exam_timetable);
         } catch (Throwable $e) {
@@ -566,7 +691,7 @@ class ExamController extends Controller
             if (Auth::user()->can('exam-result-edit')) {
                 $operate = BootstrapTableService::button('fa fa-edit', '#', ['btn-gradient-primary', 'btn-xs', 'btn-rounded', 'btn-icon', 'edit-data'], ['data-id' => $row->id, 'data-student_id' => $row->student_id, 'title' => 'Edit', 'data-toggle' => 'modal', 'data-target' => '#editModal']);
 
-                $operate .= BootstrapTableService::button('fa fa-file-pdf-o', http_url('exams/result/student/').'/'.$row->student_id.'/exam/'.$row->exam_id, ['btn-gradient-info', 'btn-xs', 'btn-rounded', 'btn-icon',], ['title' => __('view_result'), 'target' => '_blank']);
+                $operate .= BootstrapTableService::button('fa fa-file-pdf-o', http_url('exams/result/student').'/'.$row->student_id.'/exam/'.$row->exam_id, ['btn-gradient-info', 'btn-xs', 'btn-rounded', 'btn-icon',], ['title' => __('view_result'), 'target' => '_blank']);
             }
             $tempRow = $row->toArray();
             $tempRow['no'] = $no++;
@@ -848,6 +973,7 @@ class ExamController extends Controller
 
     public function examResultPdf($student_id, $exam_id)
     {
+        // dd('here');
         ResponseService::noFeatureThenRedirect('Exam Management');
         ResponseService::noPermissionThenRedirect('exam-result');
         try {
@@ -869,6 +995,9 @@ class ExamController extends Controller
 
             // ====================================================================
 
+            // dd('here');
+            // $exam_id = $request->exam_id;
+            // $student_id = $request->student_id;
 
             $results = $this->examResult->builder()
             ->with([
@@ -922,30 +1051,17 @@ class ExamController extends Controller
             // Filter the collection based on student ID
             $result = $results->where('student_id', $student_id)->first();
 
-
-
-            // $result->rank = $rank;
-
-            // ====================================================================
             if (!$result) {
                 return redirect()->back()->with('error', trans('no_records_found'));
             }
 
-            $grades = $this->grade->builder()->orderBy('starting_range','ASC')->get();
+            $grades = $this->grade->builder()->orderBy('starting_range', 'ASC')->get();
 
-
-            $settings = $this->cache->getSchoolSettings();
+            $settings = $this->cache->getSchoolSettings('*',$result->school_id);
             $data = explode("storage/", $settings['horizontal_logo'] ?? '');
             $settings['horizontal_logo'] = end($data);
 
-            if ($settings['horizontal_logo'] == null) {
-                $systemSettings = $this->cache->getSystemSettings();
-                $data = explode("storage/", $systemSettings['horizontal_logo'] ?? '');
-                $settings['horizontal_logo'] = end($data);
-            }
-
-
-            $pdf = PDF::loadView('exams.exam_result_pdf',compact('result','settings','grades'));
+            $pdf = PDF::loadView('exams.exam_result_pdf', compact('result', 'settings', 'grades'));
 
 
             return $pdf->stream();
@@ -957,34 +1073,146 @@ class ExamController extends Controller
         }
     }
 
+    // public function examResultPdf($student_id, $exam_id)
+    // {
+    //     // dd('here');
+    //     ResponseService::noFeatureThenRedirect('Exam Management');
+    //     ResponseService::noPermissionThenRedirect('exam-result');
+    //     try {
+    //         // $result = $this->examResult->builder()->with(['exam','session_year','user' => function($q) use($exam_id) {
+    //         //     $q->with(['student' => function($q) {
+    //         //         $q->with('guardian','class_section.class.stream','class_section.section','class_section.medium');
+    //         //     }])
+    //         //     ->with(['exam_marks' => function($q) use($exam_id) {
+    //         //         $q->whereHas('timetable', function($q) use($exam_id) {
+    //         //             $q->where('exam_id',$exam_id);
+    //         //         })->with(['class_subject' => function($q) {
+    //         //             $q->withTrashed()->with('subject:id,name,type');
+    //         //         }])
+    //         //         ->with('timetable');
+    //         //     }]);
+    //         // }])->where('exam_id',$exam_id)
+    //         // ->select('exam_results.*', DB::raw(' (SELECT COUNT(DISTINCT er2.obtained_marks) FROM exam_results er2 WHERE er2.class_section_id = exam_results.class_section_id AND er2.obtained_marks > exam_results.obtained_marks AND er2.exam_id = exam_results.exam_id) + 1 as rank'))
+    //         // ->get()->where('student_id',$student_id)->first();
+
+    //         // ====================================================================
+
+    //         // dd('here');
+    //         $results = $this->examResult->builder()
+    //         ->with([
+    //             'exam',
+    //             'session_year',
+    //             'user' => function($q) use($exam_id) {
+    //                 $q->with([
+    //                     'student' => function($q) {
+    //                         $q->with([
+    //                             'guardian',
+    //                             'class_section.class.stream',
+    //                             'class_section.section',
+    //                             'class_section.medium'
+    //                         ]);
+    //                     },
+    //                     'exam_marks' => function($q) use($exam_id) {
+    //                         $q->whereHas('timetable', function($q) use($exam_id) {
+    //                             $q->where('exam_id', $exam_id);
+    //                         })
+    //                         ->with([
+    //                             'class_subject' => function($q) {
+    //                                 $q->withTrashed()->with('subject:id,name,type');
+    //                             },
+    //                             'timetable'
+    //                         ]);
+    //                     }
+    //                 ]);
+    //             }
+    //         ])
+    //         ->where('exam_id', $exam_id)
+    //         ->select('exam_results.*')
+    //         ->get();
+
+    //         // Convert the results to a collection
+    //         $results = collect($results);
+
+    //         // Add rank calculation to each item in the collection
+    //         $results = $results->map(function($result) {
+    //             $rank = DB::table('exam_results as er2')
+    //                 ->where('er2.class_section_id', $result->class_section_id)
+    //                 ->where('er2.obtained_marks', '>', $result->obtained_marks)
+    //                 ->where('er2.exam_id', $result->exam_id)
+    //                 ->where('er2.status', 1)
+    //                 ->distinct('er2.obtained_marks')
+    //                 ->count() + 1;
+
+    //             $result->rank = $rank;
+    //             return $result;
+    //         });
+
+    //         // Filter the collection based on student ID
+    //         $result = $results->where('student_id', $student_id)->first();
+
+
+
+    //         // $result->rank = $rank;
+
+    //         // ====================================================================
+    //         if (!$result) {
+    //             return redirect()->back()->with('error', trans('no_records_found'));
+    //         }
+
+    //         $grades = $this->grade->builder()->orderBy('starting_range','ASC')->get();
+
+
+    //         $settings = $this->cache->getSchoolSettings();
+    //         $data = explode("storage/", $settings['horizontal_logo'] ?? '');
+    //         $settings['horizontal_logo'] = end($data);
+
+    //         if ($settings['horizontal_logo'] == null) {
+    //             $systemSettings = $this->cache->getSystemSettings();
+    //             $data = explode("storage/", $systemSettings['horizontal_logo'] ?? '');
+    //             $settings['horizontal_logo'] = end($data);
+    //         }
+
+
+    //         $pdf = PDF::loadView('exams.exam_result_pdf',compact('result','settings','grades'));
+
+
+    //         return $pdf->stream();
+
+
+    //     } catch (Throwable $e) {
+    //         ResponseService::logErrorResponse($e);
+    //         ResponseService::errorResponse();
+    //     }
+    // }
+
     public function bulkUploadIndex()
     {
         ResponseService::noFeatureThenRedirect('Exam Management');
 
-        $teacherId = Auth::user()->teacher->user_id;
+        // $teacherId = Auth::user()->teacher->user_id;
 
-        // Fetch classes where the teacher is a class teacher or subject teacher
-        $classes = $this->classSection->builder()
-            ->whereHas('class_teachers', function ($query) use ($teacherId) {
-                $query->where('teacher_id', $teacherId);
-            })
-            ->orWhereHas('subject_teachers', function ($query) use ($teacherId) {
-                $query->where('teacher_id', $teacherId);
-            })
-            ->with('class', 'section', 'medium', 'subjects')
-            ->get();
+        // // Fetch classes where the teacher is a class teacher or subject teacher
+        // $classes = $this->classSection->builder()
+        //     ->whereHas('class_teachers', function ($query) use ($teacherId) {
+        //         $query->where('teacher_id', $teacherId);
+        //     })
+        //     ->orWhereHas('subject_teachers', function ($query) use ($teacherId) {
+        //         $query->where('teacher_id', $teacherId);
+        //     })
+        //     ->with('class', 'section', 'medium', 'subjects')
+        //     ->get();
 
-        $exams = $this->exam->builder()->with(['timetable' => function ($query) {
-            $query->where('date', '<', date('Y-m-d'))->orWhere(function ($q) {
-                $q->whereDate('date', '=', date('Y-m-d'))->where('end_time', '<=', date('H:i:s'));
-            })->with(['class_subject' => function ($q) {
-                $q->SubjectTeacherClassTeacher()->with(['subject_teacher' => function ($q) {
-                    $q->where('teacher_id', Auth::user()->id)->with('subject');
-                }]);
-            }]);
-        }])->where('publish', 0)->get();
+        // $exams = $this->exam->builder()->with(['timetable' => function ($query) {
+        //     $query->where('date', '<', date('Y-m-d'))->orWhere(function ($q) {
+        //         $q->whereDate('date', '=', date('Y-m-d'))->where('end_time', '<=', date('H:i:s'));
+        //     })->with(['class_subject' => function ($q) {
+        //         $q->SubjectTeacherClassTeacher()->with(['subject_teacher' => function ($q) {
+        //             $q->where('teacher_id', Auth::user()->id)->with('subject');
+        //         }]);
+        //     }]);
+        // }])->where('publish', 0)->get();
 
-        return response(view('exams.bulk_upload_marks', compact('classes', 'exams')));
+        return response(view('exams.bulk_upload_marks'));
     }
 
     public function downloadSampleFile(Request $request) {
@@ -1064,18 +1292,18 @@ class ExamController extends Controller
     public function storeBulkData(Request $request) {
         ResponseService::noFeatureThenRedirect('Exam Management');
 
-        $validator = Validator::make($request->all(), [
-            'class_section_id'  => 'required|numeric',
-            'exam_id'           => 'required',
-            'class_subject_id'  => 'required',
-            'file'              => 'required|mimes:csv,txt'
-        ]);
-        if ($validator->fails()) {
-            ResponseService::errorResponse($validator->errors()->first());
-        }
+        // $validator = Validator::make($request->all(), [
+        //     'class_section_id'  => 'required|numeric',
+        //     'exam_id'           => 'required',
+        //     'class_subject_id'  => 'required',
+        //     'file'              => 'required|mimes:csv,txt'
+        // ]);
+        // if ($validator->fails()) {
+        //     ResponseService::errorResponse($validator->errors()->first());
+        // }
         try {
-            Excel::import(new MarksDataImport($request->class_section_id, $request->exam_id, $request->class_subject_id), $request->file);
-
+            $res = Excel::import(new MarksDataImport(null, null, null), $request->file);
+            // dd($res);
             ResponseService::successResponse('Data Stored Successfully');
         } catch (ValidationException $e) {
             ResponseService::errorResponse($e->getMessage());
@@ -1193,15 +1421,22 @@ class ExamController extends Controller
 
     public function getExamByClassId($class_section_id)
     {
+        // dd('here');
         ResponseService::noFeatureThenRedirect('Exam Management');
         try {
+            // dd($class_section_id);
             $class_id = $this->classSection->builder()->where('id', $class_section_id)->pluck('class_id');
-
+            // dd($class_id);
             $exams = $this->exam->builder()->where('class_id', $class_id)->with(['timetable' => function ($query) {
                 $query->where('date', '<', date('Y-m-d'))->orWhere(function ($q) {
                     $q->whereDate('date', '=', date('Y-m-d'))->where('end_time', '<=', date('H:i:s'));
                 });
             }])->where('publish', 0)->get();
+            // $exams = $this->exam->builder()
+            // ->where('class_id', $class_id)
+            // ->with(['timetable'])
+            // ->where('publish', 0)
+            // ->get();
 
             ResponseService::successResponse('Data Fetched Successfully', $exams);
         } catch (Throwable $e) {

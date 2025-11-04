@@ -94,9 +94,9 @@
     let date_time_format = '{{ $schoolSettings['date_format'] ?? $systemSettings['date_format'] ?? "d-m-Y" }} {{ $schoolSettings['time_format'] ?? $systemSettings['time_format'] ?? "h:i A" }}'.replace('Y', 'YYYY').replace('m', 'MM').replace('d', 'DD').replace('h', 'hh').replace('H', 'HH').replace('i', 'mm').replace('a', 'a').replace('A', 'A');
 
     let time_format = '{{ $schoolSettings['time_format'] ?? $systemSettings['time_format'] ?? "h:i A" }}'.replace('h', 'hh').replace('H', 'HH').replace('i', 'mm').replace('a', 'a').replace('A', 'A');
-    
+
     setTimeout(() => {
-        
+
         $(document).ready(function() {
             var targetNode = document.querySelector('thead');
 
@@ -118,7 +118,7 @@
         });
 
     }, 500);
-    
+
 
     // razorpay-payment-button
     setTimeout(() => {
@@ -147,9 +147,9 @@
     document.addEventListener("DOMContentLoaded", function() {
         // Add the event listener for the button to initiate the payment
         setTimeout(() => {
-            
+
             $('#razorpay-button').click(function (e) {
-                e.preventDefault(); 
+                e.preventDefault();
                 let baseUrl = window.location.origin;
                 var order_id = '';
                 var paymentTransactionId = '';
@@ -168,14 +168,14 @@
                         subscription_id : $('.subscription_id').val(),
                         feature_id : $('.feature_id').val(),
                         end_date : $('.end_date').val(),
-                        
+
                     },
                     success: function (response) {
                         console.log(response.data);
                         if (response.data) {
                             order_id = response.data.order.id;
                             paymentTransactionId = response.data.paymentTransaction.id;
-                           
+
                             var options = {
                                 "key": "{{ $paymentConfiguration->api_key ?? '' }}", // Enter the Key ID generated from the Dashboard
                                 "amount": $('.bill_amount').val() * 100, // Amount is in currency subunits. Default currency is INR. Hence, 100 refers to 1 INR
@@ -201,10 +201,10 @@
                             Swal.fire({icon: 'error', text: response.message});
                         }
                     }
-                    
+
                 });
-                
-                
+
+
             });
 
         }, 100);
@@ -216,42 +216,32 @@
 {{-- Search sidebar menu --}}
 <script>
     $(document).ready(function() {
-        $("#menu-search,#menu-search-mini").on("keyup", function() {
-            var value = $(this).val().toLowerCase();
+        $("#menu-search, #menu-search-mini").on("keyup", function() {
+            var value = $(this).val().trim();
 
-            $(".nav > li").each(function() {
-                var parent = $(this);
-                var parentText = parent.children('a').text().toLowerCase();
-                var parentMatch = parentText.indexOf(value) > -1;
+            // if (value.length < 2) {
+            //     $("#search-results").empty();
+            //     return;
+            // }
 
-                // Check if any child items match
-                var childMatch = false;
-                parent.find('.sub-menu > li').each(function() {
-                    var child = $(this);
-                    var childText = child.text().toLowerCase();
-                    if (childText.indexOf(value) > -1) {
-                        child.show();
-                        childMatch = true;
-                    } else {
-                        child.hide();
-                    }
-                });
-
-                // Show parent if any child matches, otherwise hide
-                if (parentMatch || childMatch) {
-                    parent.show();
-                    if (childMatch) {
-                        parent.children('.sub-menu').slideDown();
-                    }
-                } else {
-                    parent.hide();
+            $.ajax({
+                url: "{{ route('guardian.search_ajax') }}",
+                method: "GET",
+                data: { query: value },
+                beforeSend: function() {
+                    $("#search-results").html("<p style='padding:8px 10px;'>Searching...</p>");
+                },
+                success: function(response) {
+                    $("#search-results").html(response);
+                },
+                error: function() {
+                    $("#search-results").html("<p style='padding:8px 10px;'>Error fetching results.</p>");
                 }
             });
         });
-
     });
 
-    $('.navbar-toggler').click(function (e) { 
+    $('.navbar-toggler').click(function (e) {
         e.preventDefault();
 
         var updatedClasses = $('body').hasClass('sidebar-icon-only');

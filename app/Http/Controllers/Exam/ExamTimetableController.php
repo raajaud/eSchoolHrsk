@@ -12,6 +12,9 @@ use App\Repositories\Exam\ExamInterface;
 use Illuminate\Support\Facades\Validator;
 use App\Repositories\ExamTimetable\ExamTimetableInterface;
 use Carbon\Carbon;
+use App\Imports\ExamTimetableImport;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class ExamTimetableController extends Controller {
     private ExamInterface $exam;
@@ -25,6 +28,7 @@ class ExamTimetableController extends Controller {
     }
 
     public function edit($examId) {
+        // dd('here');
         ResponseService::noFeatureThenRedirect('Exam Management');
         ResponseService::noPermissionThenRedirect('exam-timetable-list');
         $currentSessionYear = $this->cache->getDefaultSessionYear();
@@ -55,14 +59,14 @@ class ExamTimetableController extends Controller {
         $validator->after(function ($validator) use ($request) {
             $timetable = $request->timetable;
             $lastResultDate = $request->last_result_submission_date;
-          
+
             if (!empty($timetable) && $lastResultDate) {
                 // Extract the latest date from the timetable
                 $latestExamDate = collect($timetable)
                 ->pluck('date')
                 ->map(fn($date) => Carbon::createFromFormat('d-m-Y', $date)) // Convert to Carbon
                 ->max() // Get the max date
-                ->format('Y-m-d'); 
+                ->format('Y-m-d');
 
                 $latestExamDate = Carbon::parse($latestExamDate)->format('Y-m-d');
                 $lastResultDate = Carbon::parse($lastResultDate)->format('Y-m-d');
@@ -101,10 +105,10 @@ class ExamTimetableController extends Controller {
             $startDate = $examTimetable->min('date');
             $endDate = $examTimetable->max('date');
             $last_result_submission_date = date('Y-m-d', strtotime($request->last_result_submission_date));
-           
+
             // Update Start Date and End Date to the particular Exam
             $exam = $this->exam->update($examID,['start_date' => $startDate,'end_date' => $endDate, 'last_result_submission_date' => $last_result_submission_date]);
-          
+
             DB::commit();
             ResponseService::successResponse('Data Stored Successfully');
         } catch (Throwable $e) {
@@ -123,6 +127,86 @@ class ExamTimetableController extends Controller {
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e, "Exam Controller -> DeleteTimetable method");
             ResponseService::errorResponse();
+        }
+    }
+
+    public function import(Request $request, $exam)
+    {
+        ResponseService::noFeatureThenRedirect('Exam Management');
+        ResponseService::noPermissionThenSendJson('exam-timetable-create');
+
+        $validator = Validator::make($request->all(), [
+            'file'                        => 'required|file|mimes:csv,txt,xls,xlsx',
+            'last_result_submission_date' => 'required|date_format:d-m-Y',
+        ], [
+            'file.required'                       => trans('file_is_required'),
+            'file.mimes'                          => trans('file_must_be_a_csv_or_excel'),
+            'last_result_submission_date.required' => trans('last_result_submission_date_is_required'),
+            'last_result_submission_date.date_format' => trans('last_result_submission_date_format_is_invalid'),
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::errorResponse($validator->errors()->first());
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // $exam = $this->exam->builder()->where(['id' => $examID])->firstOrFail();
+            $currentSessionYear = $this->cache->getDefaultSessionYear();
+
+            $examClassId = $exam->class_id;
+            $examID = $exam->examID;
+            // dd($examID);
+            if (!$examClassId) {
+                DB::rollBack();
+                ResponseService::errorResponse(trans('cannot_determine_class_for_this_exam'));
+            }
+
+            // Pass the school_id from the exam to the import class
+            $schoolId = $exam->school_id;
+
+            $import = new ExamTimetableImport($examID, $schoolId, $currentSessionYear->id, $examClassId);
+            // dd($examClassId);
+            Excel::import($import, $request->file('file'));
+            // dd($import);
+            // Check for failures during import
+            if ($import->failures()->isNotEmpty()) {
+                $errors = collect($import->failures())->map(function ($failure) {
+                    $rowNumber = $failure->row();
+                    $errorMessages = implode(", ", $failure->errors());
+                    return "Row " . $rowNumber . ": " . $errorMessages;
+                })->implode("<br>");
+
+                DB::rollBack();
+                ResponseService::errorResponse(trans('import_failed_with_errors') . "<br>" . $errors);
+            }
+
+            // After successful import (and potential upsert), update exam's dates
+            $examTimetableQuery = $this->examTimetable->builder()->where('exam_id', $examID); // Filter by class_id too
+            $startDate = $examTimetableQuery->min('date');
+            $endDate = $examTimetableQuery->max('date');
+            $last_result_submission_date = Carbon::createFromFormat('d-m-Y', $request->last_result_submission_date)->format('Y-m-d');
+
+            // Additional validation for last_result_submission_date against imported dates
+            if ($endDate && $last_result_submission_date <= $endDate) {
+                DB::rollBack();
+                ResponseService::errorResponse(trans('the_exam_result_marks_submission_date_should_be_greater_than_last_exam_timetable_date'));
+            }
+
+            $this->exam->update($examID, [
+                'start_date'                => $startDate,
+                'end_date'                  => $endDate,
+                'last_result_submission_date' => $last_result_submission_date
+            ]);
+
+            DB::commit();
+            ResponseService::successResponse('Exam Timetable Imported Successfully');
+
+        } catch (Throwable $e) {
+            DB::rollBack();
+            ResponseService::logErrorResponse($e, "Exam Timetable Controller -> Import method");
+            ResponseService::errorResponse(trans('something_went_wrong_while_importing_exam_timetable'));
         }
     }
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AddonController;
 use App\Http\Controllers\AllowanceController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\AssemblyController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\Auth\LoginController;
@@ -68,6 +69,8 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WebSettingsController;
 use App\Http\Controllers\WizardSettingsController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\QuoteController;
+use App\Http\Controllers\WordController;
 use App\Models\PaymentTransaction;
 use App\Models\Subscription;
 use App\Models\SubscriptionBill;
@@ -444,6 +447,7 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
 
         /*** Parents ***/
         Route::get('/guardian/search', [GuardianController::class, 'search']);
+        Route::get('/guardian/search-ajax', [GuardianController::class, 'searchAjax'])->name('guardian.search_ajax');
         Route::resource('guardian', GuardianController::class);
 
         /*** Students ***/
@@ -451,6 +455,11 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::get('updatePasswords', [StudentController::class, 'updatePasswords'])->name('students.updatePasswords');
             Route::get('create-bulk', [StudentController::class, 'createBulkData'])->name('students.create-bulk-data');
             Route::post('store-bulk', [StudentController::class, 'storeBulkData'])->name('students.store-bulk-data');
+
+            Route::get('due-slips', [StudentController::class, 'dueSlips'])->name('students.due-slips');
+
+            Route::get('create-bulk-payments', [StudentController::class, 'createBulkPaymentData'])->name('students.create-bulk-data-payments');
+            Route::post('store-bulk-payments', [StudentController::class, 'storeBulkPayments'])->name('students.store-bulk-data-payments');
 
             // Update bulk profile student & guardian
             Route::get('update-profile', [StudentController::class, 'update_profile'])->name('students.upload-profile');
@@ -572,6 +581,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
 
         // TODO : Improve this
         // Exam Timetables
+        Route::post('exams/{examID}/timetable/import', [ExamTimetableController::class, 'import'])->name('exams.timetable.import');
+
         Route::resource('exam/timetable', ExamTimetableController::class, ['as' => 'exam']);
         Route::post('exams/update-timetable', [ExamController::class, 'updateExamTimetable'])->name('exams.update-timetable');
         Route::delete('exams/delete-timetable/{id}', [ExamController::class, 'deleteExamTimetable'])->name('exams.delete-timetable');
@@ -845,6 +856,19 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
         });
 
         Route::resource('payroll-setting', PayrollSettingController::class);
+
+
+
+        Route::group(['prefix' => 'thoughts'], static function () {
+            Route::get('/', [QuoteController::class, 'index'])->name('thought.index');
+            Route::post('/create', [QuoteController::class, 'store'])->name('thought.store');
+        });
+
+        Route::group(['prefix' => 'words'], static function () {
+            Route::get('/', [WordController::class, 'index'])->name('word.index');
+            Route::post('/create', [WordController::class, 'store'])->name('word.store');
+        });
+
     });
 });
 
@@ -1033,3 +1057,8 @@ Route::get('demo-tokens', static function () {
     }
 });
 
+// delete from exams;
+// delete from exam_timetables;
+// delete from exam_marks;
+// delete from exam_results;
+// UPDATE `exams` SET `publish` = '0';
