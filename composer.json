@@ -14,7 +14,7 @@
         "ext-pdo": "*",
         "ext-zip": "*",
         "awobaz/compoships": "^2.1",
-        "barryvdh/laravel-dompdf": "^2.0",
+        "barryvdh/laravel-dompdf": "^2.2",
         "cboden/ratchet": "^0.4.4",
         "doctrine/dbal": "^3.7",
         "google/apiclient": "^2.16",

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5e9e84e09e2910584330d7d925d56d03",
+    "content-hash": "bc34cacbbfd816b81cb113a44fed548f",
     "packages": [
         {
             "name": "awobaz/compoships",

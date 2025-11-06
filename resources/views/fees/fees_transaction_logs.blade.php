@@ -59,7 +59,7 @@
                             <tr>
                                 <th scope="col" data-field="id" data-sortable="false" data-visible="false">{{__('id')}}</th>
                                 <th scope="col" data-field="no">{{ __('no.') }}</th>
-                                <th scope="col" data-field="user.full_name" data-align="center">{{ __('User')}}</th>
+                                <th scope="col" data-field="full_name" data-align="center">{{ __('User')}}</th>
                                 <th scope="col" data-field="amount" data-align="center">{{ __('Amount')}}</th>
                                 <th scope="col" data-field="payment_gateway" data-align="center" data-formatter="feesTransactionParentGateway">{{ __('Payment Gateway') }}</th>
                                 <th scope="col" data-field="payment_status" data-align="center" data-formatter="transactionPaymentStatus">{{ __('Payment Status') }}</th>

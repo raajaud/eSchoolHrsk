@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FeesAdvance;
 use App\Models\PaymentTransaction;
+use App\Models\Students;
 use App\Models\User;
 use App\Models\UserCharge;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -32,6 +33,7 @@ use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -633,6 +635,22 @@ class FeesController extends Controller
         $no = 1;
         foreach ($res as $row) {
             $tempRow = $row->toArray();
+            // dd($row->user->id);
+            $student = '';
+            $guardian = $row->user;
+            $count = $guardian->child->count();
+
+            foreach ($guardian->child as $key => $child) {
+                $student .= $child->user->full_name;
+
+                if ($count > 1 && $key < $count - 2) {
+                    $student .= ', ';
+                } elseif ($count > 1 && $key == $count - 2) {
+                    $student .= ' & ';
+                }
+            }
+            // dd($childs);
+            $tempRow['full_name'] = $row->user->full_name.' - '.$student;
             $tempRow['no'] = $no++;
             $rows[] = $tempRow;
         }
@@ -932,36 +950,149 @@ class FeesController extends Controller
         return view('fees.pay-compulsory', compact('guardian', 'logs', 'currencySymbol', 'totalPaid', 'totalCharges', 'charges'));
     }
 
+    // public function payCompulsoryFeesStore(Request $request)
+    // {
+    //     ResponseService::noFeatureThenRedirect('Fees Management');
+    //     ResponseService::noPermissionThenRedirect('fees-paid');
+
+    //     $request->validate([
+    //         'parent_id'            => 'required|numeric',
+    //     ]);
+
+
+    //     try {
+    //         DB::beginTransaction();
+    //         $today_date = Carbon::now()->format('Y-m-d');
+    //         PaymentTransaction::create([
+    //             'user_id'           => $request->parent_id,
+    //             'amount'            => $request->payment,
+    //             'payment_gateway'   => 'cash',
+    //             'order_id'          => null,
+    //             'payment_id'        => $request->cheque_no ?? null,
+    //             'payment_signature' => null,
+    //             'payment_status'    => 'success',
+    //             'school_id'         => 5,
+    //             'date'              => $today_date,
+    //         ]);
+
+    //         DB::commit();
+
+    //         ResponseService::successResponse("Data Updated SuccessFully");
+    //     } catch (Throwable $e) {
+    //         DB::rollback();
+    //         ResponseService::logErrorResponse($e, 'FeesController -> compulsoryFeesPaidStore method ');
+    //         ResponseService::errorResponse();
+    //     }
+    // }
+
     public function payCompulsoryFeesStore(Request $request)
     {
         ResponseService::noFeatureThenRedirect('Fees Management');
         ResponseService::noPermissionThenRedirect('fees-paid');
 
         $request->validate([
-            'parent_id'            => 'required|numeric',
+            'parent_id' => 'required|numeric',
         ]);
-
 
         try {
             DB::beginTransaction();
-            $today_date = Carbon::now()->format('Y-m-d');
+
+            $today_date = $request->date;
+            $payment_id = $request->cheque_no ?? uniqid('cash_');
+            $amount = is_numeric($request->payment) ? (float)$request->payment : 0;
+            $formattedAmount = number_format((float)$amount, 0);
+
             PaymentTransaction::create([
-                'user_id'           => $request->parent_id,
-                'amount'            => $request->payment,
-                'payment_gateway'   => 'cash',
-                'order_id'          => null,
-                'payment_id'        => $request->cheque_no ?? null,
-                'payment_signature' => null,
-                'payment_status'    => 'success',
-                'school_id'         => 5,
-                'date'              => $today_date,
+                'user_id'         => $request->parent_id,
+                'amount'          => $amount,
+                'payment_gateway' => 'cash',
+                'payment_id'      => $payment_id,
+                'payment_status'  => 'success',
+                'school_id'       => 5,
+                'date'            => $today_date,
             ]);
 
+            $parent  = User::where('id', $request->parent_id)->with('student')->first();
+            $father  = $parent->full_name ?? 'Parent';
+            // $student = $parent->student->user->full_name ?? 'your ward';
+            $number  = $parent->mobile ?? null;
+            $dues = (int) ($parent->total_fees - $parent->total_paid);
+            $month = $parent->due_month;;
+
+            $student = '';
+            $class = '';
+            $count = $parent->child->count();
+
+            foreach ($parent->child as $key => $child) {
+                $student .= $child->user->full_name;
+                $class .= $child->class_section->class->name ?? '-';
+
+                if ($count > 1 && $key < $count - 2) {
+                    $student .= ', ';
+                    $class .= ', ';
+                } elseif ($count > 1 && $key == $count - 2) {
+                    $student .= ' & ';
+                    $class .= ' & ';
+                }
+            }
+
+            if (!$number) {
+                throw new \Exception('Parent mobile number not found.');
+            }
+
+
+            putenv('PATH=' . getenv('PATH') . ':/opt/homebrew/bin');
+            // Generate receipt as image
+            $data = [
+                'payment_id' => $payment_id,
+                'student'    => $student,
+                'class'      => $class,
+                'father'     => $father,
+                'amount'     => $amount,
+                'dues'       => $dues,
+                'month'       => $month,
+                'date'       => $today_date,
+            ];
+
+            $pdf = PDF::loadView('fees.receipt', $data)
+            ->setPaper([0, 0, 116, 110], 'portrait') // custom size in points
+            ->setOptions([
+                'dpi' => 300,
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled' => true,
+                'defaultFont' => 'DejaVu Sans', // important!
+            ]);
+
+            $path = public_path("uploads/receipts/{$payment_id}.jpg");
+            if (!file_exists(dirname($path))) mkdir(dirname($path), 0777, true);
+            file_put_contents(str_replace('.jpg', '.pdf', $path), $pdf->output());
+
+            // Convert PDF → JPG (requires Imagick)
+            $imagick = new \Imagick();
+            $imagick->setResolution(500, 500); // 🔹 increase DPI for sharper image
+            $imagick->readImage(str_replace('.jpg', '.pdf', $path));
+            $imagick->setImageFormat('jpg');
+            $imagick->setImageCompressionQuality(100); // optional: better quality
+            $imagick->writeImage($path);
+            $imagick->clear();
+            $imagick->destroy();
+            // dd('<img src="'.$path.'">');
+            // dd('Done');
             DB::commit();
-            ResponseService::successResponse("Data Updated SuccessFully");
+
+            $number = '7488699325';
+            // Send to WhatsApp bot
+            Http::post('http://127.0.0.1:3000/send-media', [
+                'number'     => '91' . $number,
+                'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
+                'file'       => asset("uploads/receipts/{$payment_id}.jpg"),
+                'payment_id' => $payment_id,
+            ]);
+
+            ResponseService::successResponse("Payment recorded and message sent successfully.");
         } catch (Throwable $e) {
             DB::rollback();
-            ResponseService::logErrorResponse($e, 'FeesController -> compulsoryFeesPaidStore method ');
+            ResponseService::logErrorResponse($e, 'FeesController -> compulsoryFeesPaidStore');
             ResponseService::errorResponse();
         }
     }

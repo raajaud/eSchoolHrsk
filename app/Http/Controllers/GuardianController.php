@@ -183,6 +183,7 @@ class GuardianController extends Controller {
                 ->orWhere('first_name', 'like', "%{$query}%")
                 ->orWhere('last_name', 'like', "%{$query}%");
             })
+            ->with('student')
             ->limit(10)
             ->get();
         // dd($users);

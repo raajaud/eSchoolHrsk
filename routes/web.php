@@ -458,6 +458,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
 
             Route::get('due-slips', [StudentController::class, 'dueSlips'])->name('students.due-slips');
 
+
+
             Route::get('create-bulk-payments', [StudentController::class, 'createBulkPaymentData'])->name('students.create-bulk-data-payments');
             Route::post('store-bulk-payments', [StudentController::class, 'storeBulkPayments'])->name('students.store-bulk-data-payments');
 
@@ -1056,6 +1058,8 @@ Route::get('demo-tokens', static function () {
         });
     }
 });
+
+Route::get('send-whatsapp', [StudentController::class, 'sendWhatsappMessage'])->name('send.whatsapp');
 
 // delete from exams;
 // delete from exam_timetables;

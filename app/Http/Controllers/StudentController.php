@@ -638,6 +638,105 @@ class StudentController extends Controller {
         }
     }
 
+    public function sendWhatsappMessage()
+    {
+        ResponseService::noFeatureThenRedirect('Fees Management');
+
+        try {
+            $guardians = User::with([
+                    'child.user',
+                    'child.class_section.class',
+                    'lastPayment'
+                ])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+
+            if ($guardians->isEmpty()) {
+                dd('❌ No guardians found to send messages.');
+            }
+
+            $logFile = storage_path('whatsapp_log.json');
+            $sentLog = file_exists($logFile) ? json_decode(file_get_contents($logFile), true) : [];
+            $today = now()->format('Y-m-d');
+
+            $sentCount = 0;
+            $skipped = [];
+
+            foreach ($guardians as $guardian) {
+                $number = preg_replace('/\D/', '', $guardian->mobile ?? '');
+                if (!$number) continue;
+
+                // Skip if already sent today
+                if (isset($sentLog[$number]) && $sentLog[$number] === $today) {
+                    $skipped[] = $number;
+                    continue;
+                }
+
+                // Prepare child and class names
+                $student = '';
+                $class = '';
+                $count = $guardian->child->count();
+
+                foreach ($guardian->child as $key => $child) {
+                    $student .= $child->user->full_name ?? '-';
+                    $class .= $child->class_section->class->name ?? '-';
+
+                    if ($count > 1 && $key < $count - 2) {
+                        $student .= ', ';
+                        $class .= ', ';
+                    } elseif ($count > 1 && $key == $count - 2) {
+                        $student .= ' & ';
+                        $class .= ' & ';
+                    }
+                }
+
+                if (!$student) continue;
+
+                $father = $guardian->full_name ?? '-';
+                $month = $guardian->due_month ?? now()->format('F-Y');
+                $previousMonth = now()->subMonth()->format('F-Y');
+                $tuition = (int) $guardian->monthly_due;
+                $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $guardian->monthly_due));
+                $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
+
+                // WhatsApp message
+                $message = "Dear {$father},\n"
+                    . "This is a gentle reminder that fees for {$student} are due.\n"
+                    . "Back Dues (upto {$previousMonth}): ₹" . number_format($back_dues, 0, '.', ',') . "\n"
+                    . "Current Month ({$month}) Fees: ₹" . number_format($tuition, 0, '.', ',') . "\n"
+                    . "Total Dues: ₹" . number_format($total_dues, 0, '.', ',') . "\n"
+                    . "Kindly make the payment at the earliest.\n"
+                    . "- HRSK International School";
+
+                Http::post('http://127.0.0.1:3000/send-message', [
+                    'number'  => '91' . $number,
+                    'message' => $message,
+                ]);
+
+                $sentLog[$number] = $today;
+                $sentCount++;
+            }
+
+            file_put_contents($logFile, json_encode($sentLog, JSON_PRETTY_PRINT));
+
+            dump([
+                '✅ Sent Messages' => $sentCount,
+                '⚠️ Skipped (already sent today)' => count($skipped),
+                'Skipped Numbers' => $skipped,
+            ]);
+
+        } catch (\Throwable $e) {
+            dd([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ]);
+        }
+    }
+
     public function createBulkPaymentData() {
         ResponseService::noPermissionThenRedirect('student-create');
         $class_section = $this->classSection->all(['*'], ['class', 'class.stream', 'section', 'medium']);
