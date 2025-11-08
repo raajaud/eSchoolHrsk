@@ -20,7 +20,7 @@
                             <form class="pt-3 create-form form-validation " method="post" action="{{ route('fees.compulsory.store') }}" data-success-function="successFunction" novalidate="novalidate">
                                 <input type="hidden" name="parent_id" id="parent-id" value="{{$guardian->id}}"/>
 
-                                <h4>
+                                <h4>Child(ren):
                                     @foreach ($guardian->child as $child)
                                         {{ $child->user->first_name }}
                                         @if(optional($child->class_section)->class)
@@ -35,6 +35,9 @@
                                             @endif
                                         @endif
                                     @endforeach
+                                </h4>
+                                <h4>Guardian:
+                                    {{ $guardian->full_name }}
                                 </h4><br>
                                 <div class="form-group">
                                     <label for="payment-date">{{ __('date') }} <span class="text-danger">*</span></label>

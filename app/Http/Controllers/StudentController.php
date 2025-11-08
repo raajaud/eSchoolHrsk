@@ -703,14 +703,24 @@ class StudentController extends Controller {
                 $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
 
                 // WhatsApp message
-                $message = "Dear {$father},\n"
-                    . "This is a gentle reminder that fees for {$student} are due.\n"
-                    . "Back Dues (upto {$previousMonth}): ₹" . number_format($back_dues, 0, '.', ',') . "\n"
-                    . "Current Month ({$month}) Fees: ₹" . number_format($tuition, 0, '.', ',') . "\n"
-                    . "Total Dues: ₹" . number_format($total_dues, 0, '.', ',') . "\n"
-                    . "Kindly make the payment at the earliest.\n"
-                    . "- HRSK International School";
+                // $message = "Dear {$father},\n"
+                //     . "This is a gentle reminder that fees for {$student} are due.\n"
+                //     . "Back Dues (upto {$previousMonth}): ₹" . number_format($back_dues, 0, '.', ',') . "\n"
+                //     . "Current Month ({$month}) Fees: ₹" . number_format($tuition, 0, '.', ',') . "\n"
+                //     . "Total Dues: ₹" . number_format($total_dues, 0, '.', ',') . "\n"
+                //     . "Kindly make the payment at the earliest.\n"
+                //     . "- HRSK International School";
+                $message = "Dear {$father},\n\n"
+                . "Fees for {$student} ({$class}) are pending.\n\n"
+                . "Previous Dues: ₹" . number_format($back_dues, 0, '.', ',') ."/-\n"
+                . "{$month} Fees: ₹" . number_format($tuition, 0, '.', ',') ."/-\n"
+                . "Total: ₹" . number_format($total_dues, 0, '.', ',') ."/-\n\n"
+                . "Kindly pay the dues today to avoid late fine.\n"
+                . "PhonePe: 7488699325@ybl\n\n"
 
+                . "- HRSK International School";
+
+                $number = '7488699325';
                 Http::post('http://127.0.0.1:3000/send-message', [
                     'number'  => '91' . $number,
                     'message' => $message,
@@ -718,6 +728,8 @@ class StudentController extends Controller {
 
                 $sentLog[$number] = $today;
                 $sentCount++;
+
+                dd('one sent');
             }
 
             file_put_contents($logFile, json_encode($sentLog, JSON_PRETTY_PRINT));

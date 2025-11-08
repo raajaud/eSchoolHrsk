@@ -940,7 +940,7 @@ class FeesController extends Controller
     {
         ResponseService::noFeatureThenRedirect('Fees Management');
         //        ResponseService::noPermissionThenRedirect('fees-edit');
-        $guardian = User::where('id', $guardianID)->first();
+        $guardian = User::where('id', $guardianID)->with('child.user', 'child.class_section', 'child.class_section.class')->first();
         $logs = PaymentTransaction::where('user_id', $guardian->id)->get();
         $totalPaid = $logs->sum('amount');
         $charges = UserCharge::where('user_id', $guardian->id)->get();
@@ -1041,7 +1041,7 @@ class FeesController extends Controller
             }
 
 
-            putenv('PATH=' . getenv('PATH') . ':/opt/homebrew/bin');
+            putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
             // Generate receipt as image
             $data = [
                 'payment_id' => $payment_id,
