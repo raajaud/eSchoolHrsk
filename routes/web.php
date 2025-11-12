@@ -457,6 +457,12 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::post('store-bulk', [StudentController::class, 'storeBulkData'])->name('students.store-bulk-data');
 
             Route::get('due-slips', [StudentController::class, 'dueSlips'])->name('students.due-slips');
+            // Route::get('due-management', [StudentController::class, 'duesManagement'])->name('students.due-management');
+
+            Route::get('fees/due-management', [StudentController::class, 'dueManagement'])->name('students.dueManagement');
+            Route::get('fees/get-due-data', [StudentController::class, 'getDueData'])->name('students.getDueData');
+            Route::post('fees/send-filtered-whatsapp', [StudentController::class, 'sendWhatsappMessage'])->name('students.sendFilteredWhatsapp');
+            Route::post('fees/print-filtered-due-slips', [StudentController::class, 'dueSlips'])->name('students.printFilteredDueSlips');
 
 
 

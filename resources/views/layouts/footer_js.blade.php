@@ -254,3 +254,121 @@
     });
 
 </script>
+<script>
+$('#filterBtnFees').click(function() {
+    let class_section_id = $('#filter_class_section_id').val();
+    let min_dues = $('#min_dues').val();
+
+    $.get('{{ route("students.getDueData") }}', { class_section_id, min_dues }, function(res) {
+        if(res.error){ alert(res.message); return; }
+
+        window._guardiansData = res.guardians; // store for sorting
+        renderTable(res.guardians);
+
+        // Enhanced stats display
+        const avgDue = (res.stats.overall_dues / res.stats.total_guardians || 0).toFixed(0);
+        $('#stats').show().html(`
+            <div class="row text-center">
+                <div class="col-md-3"><b>Total Guardians</b><br>${res.stats.total_guardians}</div>
+                <div class="col-md-3"><b>Overall Dues</b><br>₹${res.stats.overall_dues.toLocaleString()}</div>
+                <div class="col-md-3"><b>Average Due</b><br>₹${Number(avgDue).toLocaleString()}</div>
+                <div class="col-md-3"><b>Max Due</b><br>${res.stats.max_due_guardian} (₹${res.stats.max_due_amount.toLocaleString()})</div>
+            </div>
+        `);
+
+        if (res.stats.month_wise?.length) {
+            const months = res.stats.month_wise.map(m => m.month).reverse();
+            const totals = res.stats.month_wise.map(m => m.total).reverse();
+
+            const chartEl = $('<div id="duesChart" class="mt-3"></div>');
+            $('#stats').append(chartEl);
+
+            const chart = new ApexCharts(document.querySelector('#duesChart'), {
+                chart: { type: 'bar', height: 180 },
+                series: [{ name: 'Collection', data: totals }],
+                xaxis: { categories: months },
+                title: {
+                    text: 'Last 6 Months Collection',
+                    align: 'center',
+                    style: { fontSize: '13px' }
+                },
+                dataLabels: { enabled: false }
+            });
+
+            chart.render();
+        }
+    });
+});
+
+function renderTable(data) {
+    let tbody = '';
+    data.forEach(g => {
+        const lastPayment = g.last_payment?.amount ?
+            `₹${g.last_payment.amount} <small>(${g.last_payment.date})</small>` : '-';
+        tbody += `<tr>
+            <td>${g.id}</td>
+            <td>${g.full_name}</td>
+            <td>${g.mobile || '-'}</td>
+            <td>${g.child.map(c=>c.user.full_name).join(', ')}</td>
+            <td>${g.child.map(c=>c.class_section.class.name).join(', ')}</td>
+            <td data-dues="${g.total_dues}">₹${g.total_dues.toLocaleString()}</td>
+            <td data-amount="${g.last_payment?.amount || 0}" data-date="${g.last_payment?.date || ''}">${lastPayment}</td>
+        </tr>`;
+    });
+    $('#dueTable tbody').html(tbody);
+}
+
+// Sorting feature
+$(document).on('click', 'th.sortable', function() {
+    const field = $(this).data('field');
+    const order = $(this).data('order') === 'asc' ? 'desc' : 'asc';
+    $(this).data('order', order);
+
+    const sorted = [...window._guardiansData].sort((a,b)=>{
+        let valA, valB;
+        if(field === 'dues'){ valA = a.total_dues; valB = b.total_dues; }
+        if(field === 'amount'){ valA = a.last_payment?.amount || 0; valB = b.last_payment?.amount || 0; }
+        if(field === 'date'){ valA = new Date(a.last_payment?.date || 0); valB = new Date(b.last_payment?.date || 0); }
+        return order === 'asc' ? valA - valB : valB - valA;
+    });
+    renderTable(sorted);
+});
+
+
+$('#sendWhatsapp').click(() => {
+    const guardian_ids = $('#dueTable tbody tr').map(function() {
+        return $(this).find('td').eq(0).text();
+    }).get();
+
+    $('<form>', {
+        action: '{{ route("students.sendFilteredWhatsapp") }}',
+        method: 'POST'
+    })
+    .append($('<input>', { type:'hidden', name:'_token', value:'{{ csrf_token() }}' }))
+    .append($('<input>', { type:'hidden', name:'guardian_ids', value: JSON.stringify(guardian_ids) }))
+    .appendTo('body').submit();
+
+    // const guardian_ids = $('#dueTable tbody tr').map(function() {
+    //     return $(this).find('td').eq(0).text();
+    // }).get();
+
+    // $.post('{{ route("students.sendFilteredWhatsapp") }}', {
+    //     guardian_ids,
+    //     _token: '{{ csrf_token() }}'
+    // }, res => alert(res.msg || 'Done'));
+});
+
+$('#printSlips').click(() => {
+    const guardian_ids = $('#dueTable tbody tr').map(function() {
+        return $(this).find('td').eq(0).text();
+    }).get();
+
+    $('<form>', {
+        action: '{{ route("students.printFilteredDueSlips") }}',
+        method: 'POST'
+    })
+    .append($('<input>', { type:'hidden', name:'_token', value:'{{ csrf_token() }}' }))
+    .append($('<input>', { type:'hidden', name:'guardian_ids', value: JSON.stringify(guardian_ids) }))
+    .appendTo('body').submit();
+});
+</script>

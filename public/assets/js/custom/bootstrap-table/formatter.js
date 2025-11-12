@@ -92,7 +92,7 @@ function packageTypeFormatter(value, row) {
             return "<span class='badge badge-primary'>" + window.trans["postpaid"] + "</span>";
         } else {
             return "<span class='badge badge-info'>" + window.trans["prepaid"] + "</span>";
-        }    
+        }
     } else {
         if (row.subscription.package_type) {
             return "<span class='badge badge-primary'>" + window.trans["postpaid"] + "</span>";
@@ -100,7 +100,7 @@ function packageTypeFormatter(value, row) {
             return "<span class='badge badge-info'>" + window.trans["prepaid"] + "</span>";
         }
     }
-    
+
 }
 
 function descriptionFormatter(value, row) {
@@ -345,11 +345,13 @@ function examStudentNameFormatter(value, row) {
 }
 
 function obtainedMarksFormatter(value, row) {
+    const disabled = parseInt(row.passing_status) === 2 ? 'readonly' : 'nn';
+
     if (row.obtained_marks) {
         return "<input type='hidden' name='exam_marks[" + row.no + "][exam_marks_id]' class='form-control' value='" + row.exam_marks_id + "' />" +
-            "<input type='number' required max='" + row.total_marks + "'  name='exam_marks[" + row.no + "][obtained_marks]' class='form-control' min='0' value='" + row.obtained_marks + "' />" + "<input type='hidden' name='exam_marks[" + row.no + "][total_marks]' class='form-control' value='" + parseInt(row.total_marks) + "' />"
+            "<input type='text' required max='" + row.total_marks + "'  name='exam_marks[" + row.no + "][obtained_marks]' class='form-control' min='0' value='" + row.obtained_marks + "' "+disabled+"/>" + "<input type='hidden' name='exam_marks[" + row.no + "][total_marks]' class='form-control' value='" + parseInt(row.total_marks) + "' />"
     } else {
-        return "<input type='number' required max='" + row.total_marks + "' name='exam_marks[" + row.no + "][obtained_marks]' class='form-control' min='0' value='" + ' ' + "' />" + "<input type='hidden' name='exam_marks[" + row.no + "][total_marks]' class='form-control' value='" + parseInt(row.total_marks) + "' />"
+        return "<input type='text' required max='" + row.total_marks + "' name='exam_marks[" + row.no + "][obtained_marks]' class='form-control ss' min='0' value='" + '0' + "' "+disabled+"/>" + "<input type='hidden' name='exam_marks[" + row.no + "][total_marks]' class='form-control' value='" + parseInt(row.total_marks) + "' />"
     }
 }
 
@@ -362,7 +364,7 @@ function teacherReviewFormatter(value, row) {
 }
 
 function coreSubjectFormatter(value, row) {
-    
+
     let core_subject_count = 1;
     let html = "<div style='line-height: 20px;'>";
     if (row.core_subjects.length) {
@@ -370,7 +372,7 @@ function coreSubjectFormatter(value, row) {
             html += core_subject_count + ". " + row.name_with_type + "<br>"
             core_subject_count++;
         })
-    }    
+    }
     html += "</div>";
     return html;
 }
@@ -562,14 +564,14 @@ function subjectTeacherListFormatter(value, row) {
     if (row.current_sem_subject_teachers_list.length) {
         row.current_sem_subject_teachers_list.forEach(function (data) {
             html += "<li>" + data + " </li>";
-        })    
-    } else 
+        })
+    } else
     {
         row.subject_teachers_list.forEach(function (data) {
             html += "<li>" + data + " </li>";
-        })    
+        })
     }
-    
+
     html += "</ol>";
     return html;
 }
@@ -647,7 +649,7 @@ function classSubjectsDetailFormatter(value, row) {
                     if (group.semester_id == semester.id) {
                         $.each(group.subjects, function (index, subject) {
                             subjectsList += (no++) + '. ' + subject.name_with_type + '<br>'
-                                
+
                         });
                         ElectiveSubjectsList += '<b>' + window.trans["group"] + '</b> - ' + (index + 1) + '<br>' + subjectsList + '<b>' + window.trans["total_subjects"] + '</b> : ' + group.total_subjects + '<br> <b>' + window.trans["total_selectable_subjects"] + '</b> : ' + group.total_selectable_subjects + '<br><br>';
                     }
@@ -751,7 +753,7 @@ function activeStatusFormatter(value, row) {
 }
 
 function verifyEmailStatusFormatter(value, row) {
-    
+
     if (row.user.email_verified_at != null) {
         return "<span class='badge badge-success'>" + window.trans["verified"] + "</span>";
     } else {
@@ -815,7 +817,7 @@ function totalFeesFormatter(value, row)
         $('.total_optional_fees').html(row.no.total_optional_fees ? row.no.currency_symbol+' '+amountFormatter(row.no.total_optional_fees, null) : 0);
     }
     // End Total Fees
-    
+
     // Collected Fees
     if (row.no.total_fees_collected) {
         $('.total_fees_collected').html(row.no.total_fees_collected ? row.no.currency_symbol+' '+amountFormatter(row.no.total_fees_collected, null) : 0);
@@ -863,7 +865,7 @@ function ClassSectionFormatter(value, row) {
         if(item.length!==0) {
             return "<li>" + item.trim() + "</li>";
         }
-    }).join(""); 
+    }).join("");
 
     return "<ul>" + list + "</ul>";
 }
@@ -887,8 +889,8 @@ function marksSubmissionStatus(value, row) {
                 ? "badge-success"
                 : "badge-danger";
 
-            html += `<li style='margin-bottom: 8px;'> 
-                         ${subjectData.subject} 
+            html += `<li style='margin-bottom: 8px;'>
+                         ${subjectData.subject}
                          <span class='badge ${badgeClass}' style='padding: 4px 8px; margin-left: 8px;'>
                              ${subjectData.status}
                          </span>
@@ -909,16 +911,16 @@ function classSectionSubmissionStatus(value, row)
 
     row.classSectionWiseStatus.forEach(function (data) {
         if(data.status == "Submitted") {
-            html += "<li style='margin-bottom: 8px;'>" + 
-                        data.class_section_name + 
-                        " <span class='badge badge-success' style='padding: 4px 8px; margin-left: 8px;'>" + 
-                        data.status + 
+            html += "<li style='margin-bottom: 8px;'>" +
+                        data.class_section_name +
+                        " <span class='badge badge-success' style='padding: 4px 8px; margin-left: 8px;'>" +
+                        data.status +
                     "</span></li>";
         } else {
-            html += "<li style='margin-bottom: 8px;'>" + 
-                        data.class_section_name + 
-                        " <span class='badge badge-danger' style='padding: 4px 8px; margin-left: 8px;'>" + 
-                        data.status + 
+            html += "<li style='margin-bottom: 8px;'>" +
+                        data.class_section_name +
+                        " <span class='badge badge-danger' style='padding: 4px 8px; margin-left: 8px;'>" +
+                        data.status +
                     "</span></li>";
         }
     });
@@ -926,5 +928,5 @@ function classSectionSubmissionStatus(value, row)
     html += "</ol>";
 
     return html;
- 
+
 }

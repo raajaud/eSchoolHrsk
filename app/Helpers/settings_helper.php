@@ -196,6 +196,23 @@ function findExamGrade($percentage) {
     return '';
 }
 
+function findPercentageFromGrade($grade)
+{
+    $grade = strtoupper(trim($grade));
+    $grades = app(GradesInterface::class)->builder()->get();
+
+    if (count($grades)) {
+        foreach ($grades as $row) {
+            if (strtoupper($row->grade) === $grade) {
+                // Return the midpoint of the grade range as percentage
+                return round(($row->starting_range + $row->ending_range) / 2, 2);
+            }
+        }
+    }
+
+    return 0;
+}
+
 function resizeImage($image) {
     Image::make($image)->save(null, 50);
 }

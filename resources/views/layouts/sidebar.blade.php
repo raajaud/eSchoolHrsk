@@ -158,7 +158,7 @@
                         @endcan
 
                         @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.due-slips') }}" class="nav-link">Get Due Slips</a></li>
+                            <li class="nav-item"><a href="{{ route('students.dueManagement') }}" class="nav-link">Dues Management</a></li>
                         @endcan
 
 

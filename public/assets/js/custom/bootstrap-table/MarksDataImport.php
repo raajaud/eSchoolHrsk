@@ -120,14 +120,13 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                 if (empty($row['name'])) continue;
 
                 // Find student_id using name (case-insensitive)
-                $student = User::whereRaw("LOWER(REPLACE(CONCAT(TRIM(first_name), ' ', TRIM(last_name)), ' ', '')) = ?",
-                [strtolower(str_replace(' ', '', trim($row['name'])))])
+                $student = User::whereRaw("LOWER(CONCAT(TRIM(first_name), ' ', TRIM(last_name))) = ?", [strtolower(trim($row['name']))])
                 ->whereHas('student.class_section.class', function ($q) use ($row) {
                     $q->where('name', trim($row['class']));
                 })
                 ->with('student.class_section.class')
                 ->first();
-                // dd($student);
+                // dd($student->student->class_section->class->name);
                 if (!$student) {
                     \Log::warning("Student not found: " . $row['name']);
                     continue;

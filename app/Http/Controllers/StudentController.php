@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Exports\StudentDataExport;
 use App\Imports\StudentsImport;
 use App\Imports\PaymentsImport;
+use App\Models\ClassSection;
 use App\Models\PaymentTransaction;
 use App\Models\School;
+use App\Models\SessionYear;
 use App\Models\User;
 use App\Models\UserCharge;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -608,144 +610,6 @@ class StudentController extends Controller {
         } catch (Throwable $e) {
             ResponseService::logErrorResponse($e, "Student Controller -> Store Bulk method");
             ResponseService::errorResponse();
-        }
-    }
-
-
-    public function dueSlips()
-    {
-        ResponseService::noFeatureThenRedirect('Fees Management');
-
-        try {
-            $guardians = User::with(['child.user', 'child.class_section.class'])
-                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
-                ->whereHas('child')
-                ->where('status', 1)
-                ->where('monthly_fees', '>', 0)
-                ->get();
-
-            if ($guardians->isEmpty()) {
-                return back()->with('error', 'No guardians with children found.');
-            }
-
-            $pdf = \PDF::loadView('fees.due-slip', compact('guardians'))
-                ->setPaper('a4', 'portrait');
-
-            return $pdf->stream('due-slips.pdf');
-        } catch (\Throwable $e) {
-            ResponseService::logErrorResponse($e, 'FeesController -> dueSlips');
-            return ResponseService::errorResponse();
-        }
-    }
-
-    public function sendWhatsappMessage()
-    {
-        ResponseService::noFeatureThenRedirect('Fees Management');
-
-        try {
-            $guardians = User::with([
-                    'child.user',
-                    'child.class_section.class',
-                    'lastPayment'
-                ])
-                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
-                ->whereHas('child')
-                ->where('status', 1)
-                ->where('monthly_fees', '>', 0)
-                ->get();
-
-            if ($guardians->isEmpty()) {
-                dd('❌ No guardians found to send messages.');
-            }
-
-            $logFile = storage_path('whatsapp_log.json');
-            $sentLog = file_exists($logFile) ? json_decode(file_get_contents($logFile), true) : [];
-            $today = now()->format('Y-m-d');
-
-            $sentCount = 0;
-            $skipped = [];
-
-            foreach ($guardians as $guardian) {
-                $number = preg_replace('/\D/', '', $guardian->mobile ?? '');
-                if (!$number) continue;
-
-                // Skip if already sent today
-                if (isset($sentLog[$number]) && $sentLog[$number] === $today) {
-                    $skipped[] = $number;
-                    continue;
-                }
-
-                // Prepare child and class names
-                $student = '';
-                $class = '';
-                $count = $guardian->child->count();
-
-                foreach ($guardian->child as $key => $child) {
-                    $student .= $child->user->full_name ?? '-';
-                    $class .= $child->class_section->class->name ?? '-';
-
-                    if ($count > 1 && $key < $count - 2) {
-                        $student .= ', ';
-                        $class .= ', ';
-                    } elseif ($count > 1 && $key == $count - 2) {
-                        $student .= ' & ';
-                        $class .= ' & ';
-                    }
-                }
-
-                if (!$student) continue;
-
-                $father = $guardian->full_name ?? '-';
-                $month = $guardian->due_month ?? now()->format('F-Y');
-                $previousMonth = now()->subMonth()->format('F-Y');
-                $tuition = (int) $guardian->monthly_due;
-                $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $guardian->monthly_due));
-                $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
-
-                // WhatsApp message
-                // $message = "Dear {$father},\n"
-                //     . "This is a gentle reminder that fees for {$student} are due.\n"
-                //     . "Back Dues (upto {$previousMonth}): ₹" . number_format($back_dues, 0, '.', ',') . "\n"
-                //     . "Current Month ({$month}) Fees: ₹" . number_format($tuition, 0, '.', ',') . "\n"
-                //     . "Total Dues: ₹" . number_format($total_dues, 0, '.', ',') . "\n"
-                //     . "Kindly make the payment at the earliest.\n"
-                //     . "- HRSK International School";
-                $message = "Dear {$father},\n\n"
-                . "Fees for {$student} ({$class}) are pending.\n\n"
-                . "Previous Dues: ₹" . number_format($back_dues, 0, '.', ',') ."/-\n"
-                . "{$month} Fees: ₹" . number_format($tuition, 0, '.', ',') ."/-\n"
-                . "Total: ₹" . number_format($total_dues, 0, '.', ',') ."/-\n\n"
-                . "Kindly pay the dues today to avoid late fine.\n"
-                . "PhonePe: 7488699325@ybl\n\n"
-
-                . "- HRSK International School";
-
-                $number = '7488699325';
-                Http::post('http://127.0.0.1:3000/send-message', [
-                    'number'  => '91' . $number,
-                    'message' => $message,
-                ]);
-
-                $sentLog[$number] = $today;
-                $sentCount++;
-
-                dd('one sent');
-            }
-
-            file_put_contents($logFile, json_encode($sentLog, JSON_PRETTY_PRINT));
-
-            dump([
-                '✅ Sent Messages' => $sentCount,
-                '⚠️ Skipped (already sent today)' => count($skipped),
-                'Skipped Numbers' => $skipped,
-            ]);
-
-        } catch (\Throwable $e) {
-            dd([
-                'error' => true,
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ]);
         }
     }
 
@@ -1407,4 +1271,205 @@ class StudentController extends Controller {
                 ResponseService::errorResponse();
         }
     }
+
+
+    public function dueManagement()
+    {
+        ResponseService::noFeatureThenRedirect('Fees Management');
+
+        $class_sections = ClassSection::with('class')->get();
+        $sessionYears = SessionYear::all();
+
+        return view('students.feesDetails', compact('class_sections', 'sessionYears'));
+    }
+
+
+    public function getDueData(Request $request)
+    {
+        try {
+            $query = User::with(['child.user', 'child.class_section.class', 'lastPayment'])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1);
+
+            if ($request->filled('class_section_id')) {
+                $query->whereHas('child.class_section', fn($q) =>
+                    $q->where('id', $request->class_section_id)
+                );
+            }
+
+            $guardians = $query->get()->map(function ($guardian) {
+                $guardian->total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
+                return $guardian;
+            });
+
+            if ($request->filled('min_dues')) {
+                $guardians = $guardians->filter(fn($g) => $g->total_dues >= (int) $request->min_dues);
+            }
+
+            // Collect IDs for filtered guardians
+            $guardianIds = $guardians->pluck('id')->toArray();
+
+            // Stats (filtered)
+            $total_guardians = $guardians->count();
+            $overall_dues = $guardians->sum('total_dues');
+            $max_due_guardian = $guardians->sortByDesc('total_dues')->first();
+
+            // Month-wise collection for filtered guardians only
+            $monthWisePayments = PaymentTransaction::selectRaw('DATE_FORMAT(date, "%b-%Y") as month, SUM(amount) as total')
+                ->whereIn('user_id', $guardianIds)
+                ->groupBy('month')
+                ->orderByRaw('MIN(date) DESC')
+                ->limit(6)
+                ->get();
+
+            return response()->json([
+                'guardians' => $guardians->values(),
+                'stats' => [
+                    'total_guardians' => $total_guardians,
+                    'overall_dues' => $overall_dues,
+                    'max_due_guardian' => $max_due_guardian?->full_name,
+                    'max_due_amount' => $max_due_guardian?->total_dues ?? 0,
+                    'month_wise' => $monthWisePayments,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            ResponseService::logErrorResponse($e, 'FeesController -> getDueData');
+            return response()->json(['error' => true, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function dueSlips(Request $request)
+    {
+        ResponseService::noFeatureThenRedirect('Fees Management');
+
+        try {
+            $ids = json_decode($request->guardian_ids, true);
+            $guardians = User::with(['child.user', 'child.class_section.class'])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->whereIn('id', $ids)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+
+            if ($guardians->isEmpty()) {
+                return back()->with('error', 'No guardians with children found.');
+            }
+
+            $pdf = \PDF::loadView('fees.due-slip', compact('guardians'))
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->stream('due-slips.pdf');
+        } catch (\Throwable $e) {
+            ResponseService::logErrorResponse($e, 'FeesController -> dueSlips');
+            return ResponseService::errorResponse();
+        }
+    }
+
+    public function sendWhatsappMessage(Request $request)
+    {
+        ResponseService::noFeatureThenRedirect('Fees Management');
+
+        try {
+            $ids = json_decode($request->guardian_ids, true);
+            $guardians = User::with([
+                    'child.user',
+                    'child.class_section.class',
+                    'lastPayment'
+                ])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->whereIn('id', $ids)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+
+            if ($guardians->isEmpty()) {
+                dd('❌ No guardians found to send messages.');
+            }
+
+            $logFile = storage_path('whatsapp_log.json');
+            $sentLog = file_exists($logFile) ? json_decode(file_get_contents($logFile), true) : [];
+            $today = now()->format('Y-m-d');
+
+            $sentCount = 0;
+            $skipped = [];
+
+            foreach ($guardians as $guardian) {
+                $number = preg_replace('/\D/', '', $guardian->mobile ?? '');
+                if (!$number) continue;
+
+                // Skip if already sent today
+                if (isset($sentLog[$number]) && $sentLog[$number] === $today) {
+                    $skipped[] = $number;
+                    continue;
+                }
+
+                // Prepare child and class names
+                $student = '';
+                $class = '';
+                $count = $guardian->child->count();
+
+                foreach ($guardian->child as $key => $child) {
+                    $student .= $child->user->full_name ?? '-';
+                    $class .= $child->class_section->class->name ?? '-';
+
+                    if ($count > 1 && $key < $count - 2) {
+                        $student .= ', ';
+                        $class .= ', ';
+                    } elseif ($count > 1 && $key == $count - 2) {
+                        $student .= ' & ';
+                        $class .= ' & ';
+                    }
+                }
+
+                if (!$student) continue;
+
+                $father = $guardian->full_name ?? '-';
+                $month = $guardian->due_month ?? now()->format('F-Y');
+                $previousMonth = now()->subMonth()->format('F-Y');
+                $tuition = (int) $guardian->monthly_due;
+                $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $guardian->monthly_due));
+                $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
+
+                $message = "Dear {$father},\n\n"
+                . "Fees for {$student} ({$class}) are pending.\n\n"
+                . "Previous Dues: ₹" . number_format($back_dues, 0, '.', ',') ."/-\n"
+                . "{$month} Fees: ₹" . number_format($tuition, 0, '.', ',') ."/-\n\n"
+                . "         _*Total: ₹" . number_format($total_dues, 0, '.', ',') ."/-*_\n\n"
+                // . "Kindly pay the dues today to avoid late fine.\n"
+                . "PhonePe: 7488699325@ybl\n\n"
+                . "- HRSK International School"
+                . "\n\n\n_System-generated. Verify details._";
+
+                $number = '7488699325';
+                Http::post('http://127.0.0.1:3000/send-message', [
+                    'number'  => '91' . $number,
+                    'message' => $message,
+                ]);
+
+                $sentLog[$number] = $today;
+                $sentCount++;
+
+                dd('one sent');
+            }
+
+            file_put_contents($logFile, json_encode($sentLog, JSON_PRETTY_PRINT));
+
+            dump([
+                '✅ Sent Messages' => $sentCount,
+                '⚠️ Skipped (already sent today)' => count($skipped),
+                'Skipped Numbers' => $skipped,
+            ]);
+
+        } catch (\Throwable $e) {
+            dd([
+                'error' => true,
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+            ]);
+        }
+    }
+
 }

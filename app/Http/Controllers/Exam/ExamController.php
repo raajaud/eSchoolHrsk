@@ -153,7 +153,7 @@ class ExamController extends Controller
             foreach ($csvData as $row) {
                 $row = array_combine($header, $row);
 
-                $date = Carbon::createFromFormat('d-m-Y', $row['date'])->format('Y-m-d');
+                $date = Carbon::createFromFormat('d/m/Y', $row['date'])->format('Y-m-d');
                 $startTime = Carbon::createFromFormat('h:i A', $row['start_time'])->format('H:i:s');
                 $endTime = Carbon::createFromFormat('h:i A', $row['end_time'])->format('H:i:s');
 
@@ -534,7 +534,11 @@ class ExamController extends Controller
             // Loop on the Students Data
             $rows = [];
             foreach ($students as $no => $student) {
-                $rows[] = ['id' => $student->id, 'no' => $no + 1, 'student_name' => $student->full_name, 'total_marks' => $timetable->total_marks, 'exam_marks_id' => $student->exam_marks[0]->id ?? '', 'obtained_marks' => $student->exam_marks[0]->obtained_marks ?? '', 'operate' => '<a href=' . route('exams.edit', $student->id) . ' class="btn btn-xs btn-gradient-primary btn-rounded btn-icon edit-data" data-id=' . $student->id . ' title="Edit" data-toggle="modal" data-target="#editModal"><i class="fa fa-edit"></i></a>&nbsp;&nbsp;<a href=' . route('exams.destroy', $student->id) . ' class="btn btn-xs btn-gradient-danger btn-rounded btn-icon delete-form" data-id=' . $student->id . '><i class="fa fa-trash"></i></a>',];
+                $mard = '';
+                if(isset($student->exam_marks[0]->passing_status) && $student->exam_marks[0]->passing_status == 2){
+                    $mard = 'AB';
+                }
+                $rows[] = ['id' => $student->id, 'no' => $no + 1, 'student_name' => $student->full_name.' <span class="badge badge-danger">'.$mard.'</span>', 'total_marks' => $timetable->total_marks, 'exam_marks_id' => $student->exam_marks[0]->id ?? '', 'obtained_marks' => $student->exam_marks[0]->obtained_marks ?? 0, 'passing_status' => $student->exam_marks[0]->passing_status ?? 0, 'operate' => '<a href=' . route('exams.edit', $student->id) . ' class="btn btn-xs btn-gradient-primary btn-rounded btn-icon edit-data" data-id=' . $student->id . ' title="Edit" data-toggle="modal" data-target="#editModal"><i class="fa fa-edit"></i></a>&nbsp;&nbsp;<a href=' . route('exams.destroy', $student->id) . ' class="btn btn-xs btn-gradient-danger btn-rounded btn-icon delete-form" data-id=' . $student->id . '><i class="fa fa-trash"></i></a>',];
             }
 
             // Return Data as bulk-data
