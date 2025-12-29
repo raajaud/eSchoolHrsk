@@ -258,8 +258,9 @@
 $('#filterBtnFees').click(function() {
     let class_section_id = $('#filter_class_section_id').val();
     let min_dues = $('#min_dues').val();
+    let min_months = $('#min_months').val();
 
-    $.get('{{ route("students.getDueData") }}', { class_section_id, min_dues }, function(res) {
+    $.get('{{ route("students.getDueData") }}', { class_section_id, min_dues, min_months }, function(res) {
         if(res.error){ alert(res.message); return; }
 
         window._guardiansData = res.guardians; // store for sorting

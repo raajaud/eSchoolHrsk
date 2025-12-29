@@ -15,7 +15,7 @@
     <div class="card">
         <div class="card-body">
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label>Class Section</label>
                     <select id="filter_class_section_id" class="form-control">
                         <option value="">All</option>
@@ -24,17 +24,21 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label>Minimum Dues (₹)</label>
                     <input type="number" id="min_dues" class="form-control" placeholder="Enter minimum dues">
                 </div>
-                <div class="col-md-4 d-flex align-items-end">
+                <div class="col-md-3">
+                    <label>No. of Months</label>
+                    <input type="number" id="min_months" class="form-control" placeholder="Enter number of months">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
                     <button id="filterBtnFees" class="btn btn-primary w-100">Filter</button>
                 </div>
             </div>
             <div id="stats" class="alert alert-" style="display:none; border: 1px solid black;"></div>
 
-            <table class="table table-bordered table-striped" id="dueTable">
+            <table class="table table-responsive table-bordered" id="dueTable">
                 <thead>
                     <tr>
                         <th><input type="checkbox" id="selectAll"></th>

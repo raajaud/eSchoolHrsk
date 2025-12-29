@@ -112,8 +112,8 @@
                         <tr><th>Sl.</th><th>Particulars</th><th>Month</th><th>Rs.</th><th>P.</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>1</td><td>School Fees (tuition/van/hostel/day boarding) </td><td>{{ $month }}</td><td>{{ number_format($tuition, 0, '.', ',') }}/-</td><td>00</td></tr>
-                        <tr><td>2</td><td>Back Dues</td><td>{{ $previousMonth?'upto '.$previousMonth:'' }}</td><td>{{ number_format($back_dues, 0, '.', ',') }}/-</td><td>00</td></tr>
+                        <tr><td style="text-align: center;">1</td><td>School Fees (tuition/van/hostel/day boarding) </td><td>{{ $month }}</td><td>{{ number_format($tuition, 0, '.', ',') }}/-</td><td>00</td></tr>
+                        <tr><td style="text-align: center;">2</td><td>Back Dues</td><td>{{ $previousMonth?'upto '.$previousMonth:'' }}</td><td>{{ number_format($back_dues, 0, '.', ',') }}/-</td><td>00</td></tr>
                         <tr style="font-size: 12px;"><td colspan="3" align="right"><b>Total Dues</b></td><td><b>{{ number_format($total_dues, 0, '.', ',') }}/-</b></td><td></td></tr>
                         <tr style="font-size: 12px; padding: 10px;"><td colspan="5" align="left">
                             Last Payment: {{ $guardian->lastPayment?->amount }}

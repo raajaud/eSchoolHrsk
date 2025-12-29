@@ -8,11 +8,11 @@
     <div class="page-header">
         <h3 class="page-title">Monthly User Charges</h3>
         <button type="button"
-        class="btn btn-success mb-3"
-        data-toggle="modal"
-        data-target="#addFeesModal">
-    + Add Fees
-</button>
+                class="btn btn-success mb-3"
+                data-toggle="modal"
+                data-target="#addFeesModal">
+            + Add Fees
+        </button>
     </div>
 
     <div class="card">
@@ -100,6 +100,7 @@
         </div>
     </div>
 </div>
+
 
 <div class="modal fade" id="addFeesModal" tabindex="-1">
     <div class="modal-dialog">

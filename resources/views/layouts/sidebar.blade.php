@@ -50,7 +50,7 @@
                             <a href="{{ route('fees.transactions.log.index') }}" class="nav-link" data-access="@hasFeatureAccess('Fees Management')"> {{__('Fees Transaction Logs') }}
                             </a>
                         </li>
-
+                        
                         @can('student-create')
                             <li class="nav-item"><a href="{{ route('students.create') }}" class="nav-link">{{ __('student_admission') }}</a></li>
                         @endcan
@@ -72,15 +72,6 @@
                         @can('student-create')
                             <li class="nav-item"><a href="{{ route('students.create-bulk-data-payments') }}" class="nav-link">Add Bulk Payments</a></li>
                         @endcan
-
-                        {{-- @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.dueManagement') }}" class="nav-link">Dues Management</a></li>
-                        @endcan
-
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('points.all_points') }}" class="nav-link">Points Management</a></li>
-                        @endcan --}}
-
 
 
                         @can('student-edit')

@@ -294,20 +294,20 @@
         });
 
 
-    function feesTransactionParentGatewayNew(value, row) {
-        if (row.payment_gateway == "Stripe") {
-            return "<span class='badge badge-primary'>"+window.trans['Stripe']+"</span>";
-        } else if (row.payment_gateway == 'Cash') {
-            return "<span class='badge badge-success'>"+window.trans['cash']+"</span>";
-        } else if (row.payment_gateway == 'Cheque') {
-            return "<span class='badge badge-info'>"+window.trans['cheque']+"</span>";
-        } else if (row.payment_gateway == 'Razorpay') {
-            return "<span class='badge badge-dark'>"+window.trans['Razorpay']+"</span>";
-        } else if (row.payment_gateway == 'Flutterwave') {
-            return "<span class='badge badge-dark'>"+window.trans['Flutterwave']+"</span>";
-        } else {
-            return "<span class='badge badge-primary'>"+row.payment_gateway+"</span>";
+        function feesTransactionParentGatewayNew(value, row) {
+            if (row.payment_gateway == "Stripe") {
+                return "<span class='badge badge-primary'>"+window.trans['Stripe']+"</span>";
+            } else if (row.payment_gateway == 'Cash') {
+                return "<span class='badge badge-success'>"+window.trans['cash']+"</span>";
+            } else if (row.payment_gateway == 'Cheque') {
+                return "<span class='badge badge-info'>"+window.trans['cheque']+"</span>";
+            } else if (row.payment_gateway == 'Razorpay') {
+                return "<span class='badge badge-dark'>"+window.trans['Razorpay']+"</span>";
+            } else if (row.payment_gateway == 'Flutterwave') {
+                return "<span class='badge badge-dark'>"+window.trans['Flutterwave']+"</span>";
+            } else {
+                return "<span class='badge badge-primary'>"+row.payment_gateway+"</span>";
+            }
         }
-    }
     </script>
 @endsection

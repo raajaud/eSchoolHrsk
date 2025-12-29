@@ -86,7 +86,7 @@
         </tr>
         <tr>
             <td><b>Father:</b> {{ $father }}</td>
-            <td><b>Mode:</b> Cash</td>
+            <td><b>Mode:</b> {{ $mode }}</td>
         </tr>
         {{-- <tr>
             <td><b>Amount Paid:</b> Rs. {{ number_format($amount, 0) }}</td>
