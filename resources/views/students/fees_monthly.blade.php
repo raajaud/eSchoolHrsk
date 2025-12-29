@@ -41,7 +41,7 @@
             <form method="POST" action="{{ route('fees_monthly_save') }}">
                 @csrf
 
-                <table class="table table-bordered table-striped">
+                <table class="table table-bordered table-striped table-responsive">
                     <thead>
                         <tr>
                             <th>Guardian</th>
@@ -84,7 +84,8 @@
                                     <input type="number"
                                            name="fees[{{ $guardian->id }}]"
                                            class="form-control"
-                                           value="{{ $guardian->monthly_fees ?? 0 }}">
+                                           value="{{ $guardian->monthly_fees ?? 0 }}"
+                                           style="width:100px;">
                                 </td>
                             </tr>
 

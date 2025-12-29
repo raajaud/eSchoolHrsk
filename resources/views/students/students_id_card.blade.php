@@ -55,7 +55,7 @@
             font-weight: bold;
             border-bottom-right-radius: 10px;
         }
-        
+
         .footer {
             background-color: {{ $settings['footer_color'] ?? '#56cc99' }};
             color: {{ $settings['header_footer_text_color'] ?? 'black' }};
@@ -87,7 +87,7 @@
             padding: 10px;
             position: fixed;
             bottom: 35px;
-            right: 10px;   
+            right: 10px;
         }
         .vertical-school-name {
             padding: 10px 10px !important;
@@ -173,8 +173,8 @@
     @foreach ($students as $key => $student)
     <div class="card-body">
         @if ($settings['layout_type'] == 'horizontal')
-            
-            <table class="table full-width">
+
+            <table class="table full-width table-responsive">
                 <tr class="header">
                     <th class="school-logo">
                         @if ($settings['horizontal_logo'] ?? '')
@@ -193,15 +193,15 @@
                         @if ($student->getRawOriginal('image'))
                             <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('storage/').$student->getRawOriginal('image') }}" alt="">
                         @else
-                            <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('assets/dummy_logo.jpg') }}" alt="">    
+                            <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('assets/dummy_logo.jpg') }}" alt="">
                         @endif
-                        
+
                     </td>
                     @if (in_array('student_name',$settings['student_id_card_fields']))
                         <th class="student-data">Student Name :</th>
                         <td>{{ $student->full_name }}</td>
                     @endif
-                    
+
                 </tr>
                 @if (in_array('class_section',$settings['student_id_card_fields']))
                 <tr>
@@ -283,7 +283,7 @@
             </table>
         @else
             {{-- Vertical --}}
-            <table class="table full-width">
+            <table class="table full-width table-responsive">
                 <tr class="header">
                     <th class="vertical-school-name" colspan="2">{{ $settings['school_name'] }}</th>
                 </tr>
@@ -304,7 +304,7 @@
                         @if ($student->getRawOriginal('image'))
                             <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('storage/').$student->getRawOriginal('image') }}" alt="">
                         @else
-                            <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('assets/dummy_logo.jpg') }}" alt="">    
+                            <img class="student-profile" height="120" width="120" align="center" src="{{ public_path('assets/dummy_logo.jpg') }}" alt="">
                         @endif
                     </td>
                 </tr>
@@ -402,19 +402,19 @@
             <div class="background-image">
                 @if ($settings['background_image'] ?? '')
                     <img src="{{ public_path('storage/').$settings['background_image'] }}" class="background_image" height="140" width="360" alt="">
-                    
+
                 @endif
             </div>
         @else
             <div class="background-image">
                 @if ($settings['background_image'] ?? '')
                     <img src="{{ public_path('storage/').$settings['background_image'] }}" class="background_image" height="140" width="280" alt="">
-                    
+
                 @endif
             </div>
         @endif
-        
-        
+
+
     </div>
     @endforeach
 </body>

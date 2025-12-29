@@ -22,7 +22,7 @@
                     <div class="text-center">
                         <div>
                             @if ($school['horizontal_logo'] ?? '')
-                                <img style="height: 5rem;width: 5rem;" src="{{ public_path('storage/') . $school['horizontal_logo'] }}" alt="">                    
+                                <img style="height: 5rem;width: 5rem;" src="{{ public_path('storage/') . $school['horizontal_logo'] }}" alt="">
                             @else
                                 <img style="height: 5rem;width: 5rem;" src="{{ public_path('assets/horizontal-logo2.svg') }}" alt="">
                             @endif
@@ -60,7 +60,7 @@
                 </div>
             </div>
             <div class="mt-4 ml-4">
-                <table class="table" style="text-align: center">
+                <table class="table table-responsive" style="text-align: center">
                     <thead>
                     <tr>
                         <th scope="col">Sr no.</th>
@@ -95,7 +95,7 @@
                                         </td>
                                         <td class="text-right">
                                             {{$compulsoryFee->amount}} {{$school['currency_symbol'] ?? ''}}<br><br><br><br><br>
-                                            
+
                                             {{-- <hr> --}}
                                             {{-- {{$data->amount + $compulsoryFee->due_charges}} {{$school['currency_symbol'] ?? ''}} --}}
                                         </td>
@@ -182,7 +182,7 @@
                             <td class="text-right">{{ ($feesPaid->fees->total_compulsory_fees - $total_fees + $total_optional_fees) }} {{$school['currency_symbol'] ?? ''}}</td>
                         </tr>
                     @endif
-                    
+
                     </tbody>
                 </table>
             </div>

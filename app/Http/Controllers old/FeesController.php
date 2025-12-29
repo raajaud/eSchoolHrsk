@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\FeesAdvance;
 use App\Models\PaymentTransaction;
+use App\Models\Students;
 use App\Models\User;
 use App\Models\UserCharge;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -815,7 +816,6 @@ class FeesController extends Controller
         return response()->json($statistics);
     }
 
-
     /* START : Fees Paid Module */
     public function feesPaidListIndex()
     {
@@ -1098,7 +1098,7 @@ class FeesController extends Controller
     {
         ResponseService::noFeatureThenRedirect('Fees Management');
         //        ResponseService::noPermissionThenRedirect('fees-edit');
-        $guardian = User::where('id', $guardianID)->first();
+        $guardian = User::where('id', $guardianID)->with('child.user', 'child.class_section', 'child.class_section.class')->first();
         $logs = PaymentTransaction::where('user_id', $guardian->id)->get();
         $totalPaid = $logs->sum('amount');
         $charges = UserCharge::where('user_id', $guardian->id)->get();
@@ -1143,6 +1143,118 @@ class FeesController extends Controller
     //     }
     // }
 
+    // public function payCompulsoryFeesStore(Request $request)
+    // {
+    //     ResponseService::noFeatureThenRedirect('Fees Management');
+    //     ResponseService::noPermissionThenRedirect('fees-paid');
+
+    //     $request->validate([
+    //         'parent_id' => 'required|numeric',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $today_date = $request->date;
+    //         $payment_id = $request->cheque_no ?? uniqid('cash_');
+    //         $amount = is_numeric($request->payment) ? (float)$request->payment : 0;
+    //         $formattedAmount = number_format((float)$amount, 0);
+
+    //         PaymentTransaction::create([
+    //             'user_id'         => $request->parent_id,
+    //             'amount'          => $amount,
+    //             'payment_gateway' => 'cash',
+    //             'payment_id'      => $payment_id,
+    //             'payment_status'  => 'success',
+    //             'school_id'       => 5,
+    //             'date'            => $today_date,
+    //         ]);
+
+    //         $parent  = User::where('id', $request->parent_id)->with('student')->first();
+    //         $father  = $parent->full_name ?? 'Parent';
+    //         // $student = $parent->student->user->full_name ?? 'your ward';
+    //         $number  = $parent->mobile ?? null;
+    //         $dues = (int) ($parent->total_fees - $parent->total_paid);
+    //         $month = $parent->due_month;;
+
+    //         $student = '';
+    //         $class = '';
+    //         $count = $parent->child->count();
+
+    //         foreach ($parent->child as $key => $child) {
+    //             $student .= $child->user->full_name;
+    //             $class .= $child->class_section->class->name ?? '-';
+
+    //             if ($count > 1 && $key < $count - 2) {
+    //                 $student .= ', ';
+    //                 $class .= ', ';
+    //             } elseif ($count > 1 && $key == $count - 2) {
+    //                 $student .= ' & ';
+    //                 $class .= ' & ';
+    //             }
+    //         }
+
+    //         if (!$number) {
+    //             throw new \Exception('Parent mobile number not found.');
+    //         }
+
+
+    //         putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
+    //         // Generate receipt as image
+    //         $data = [
+    //             'payment_id' => $payment_id,
+    //             'student'    => $student,
+    //             'class'      => $class,
+    //             'father'     => $father,
+    //             'amount'     => $amount,
+    //             'dues'       => $dues,
+    //             'month'       => $month,
+    //             'date'       => $today_date,
+    //         ];
+
+    //         $pdf = PDF::loadView('fees.receipt', $data)
+    //         ->setPaper([0, 0, 116, 110], 'portrait') // custom size in points
+    //         ->setOptions([
+    //             'dpi' => 300,
+    //             'isHtml5ParserEnabled' => true,
+    //             'isRemoteEnabled' => true,
+    //             'defaultFont' => 'DejaVu Sans', // important!
+    //         ]);
+
+    //         $path = public_path("uploads/receipts/{$payment_id}.jpg");
+    //         if (!file_exists(dirname($path))) mkdir(dirname($path), 0777, true);
+    //         file_put_contents(str_replace('.jpg', '.pdf', $path), $pdf->output());
+
+    //         // Convert PDF → JPG (requires Imagick)
+    //         $imagick = new \Imagick();
+    //         $imagick->setResolution(500, 500); // 🔹 increase DPI for sharper image
+    //         $imagick->readImage(str_replace('.jpg', '.pdf', $path));
+    //         $imagick->setImageFormat('jpg');
+    //         $imagick->setImageCompressionQuality(100); // optional: better quality
+    //         $imagick->writeImage($path);
+    //         $imagick->clear();
+    //         $imagick->destroy();
+    //         // dd('<img src="'.$path.'">');
+    //         // dd('Done');
+    //         DB::commit();
+
+    //         $number = '7488699325';
+    //         // Send to WhatsApp bot
+    //         Http::post('http://127.0.0.1:3000/send-media', [
+    //             'number'     => '91' . $number,
+    //             'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
+    //             'file'       => asset("uploads/receipts/{$payment_id}.jpg"),
+    //             'payment_id' => $payment_id,
+    //         ]);
+
+    //         ResponseService::successResponse("Payment recorded and message sent successfully.");
+    //     } catch (Throwable $e) {
+    //         DB::rollback();
+    //         ResponseService::logErrorResponse($e, 'FeesController -> compulsoryFeesPaidStore');
+    //         ResponseService::errorResponse();
+    //     }
+    // }
+
     public function payCompulsoryFeesStore(Request $request)
     {
         ResponseService::noFeatureThenRedirect('Fees Management');
@@ -1156,8 +1268,8 @@ class FeesController extends Controller
             DB::beginTransaction();
 
             $date = $request->date;
-            $mode = $request->mode == '1' ? 'Cash' : 'Online';
             $today_date = \Carbon\Carbon::createFromFormat('d-m-Y', $date)->format('Y-m-d');
+
             $payment_id = $request->cheque_no ?? uniqid('cash_');
             $amount = is_numeric($request->payment) ? (float)$request->payment : 0;
             $formattedAmount = number_format((float)$amount, 0);
@@ -1165,7 +1277,7 @@ class FeesController extends Controller
             PaymentTransaction::create([
                 'user_id'         => $request->parent_id,
                 'amount'          => $amount,
-                'payment_gateway' => $mode,
+                'payment_gateway' => 'cash',
                 'payment_id'      => $payment_id,
                 'payment_status'  => 'success',
                 'school_id'       => 5,
@@ -1178,11 +1290,11 @@ class FeesController extends Controller
             $number  = $parent->mobile ?? null;
             $dues = (int) ($parent->total_fees - $parent->total_paid);
             // $month = $parent->due_month;
-
             $month = UserCharge::where('user_id', $parent->id)
             ->where('charge_type', 'monthly_fees')
             ->latest('id')
             ->value('description');
+            // dd($month);
 
             $student = '';
             $class = '';
@@ -1204,7 +1316,7 @@ class FeesController extends Controller
             if (!$number) {
                 throw new \Exception('Parent mobile number not found.');
             }
-            
+
             $data = [
                 'payment_id' => $payment_id,
                 'student'    => $student,
@@ -1212,13 +1324,12 @@ class FeesController extends Controller
                 'father'     => $father,
                 'amount'     => $amount,
                 'dues'       => $dues,
-                'month'      => $month,
+                'month'       => $month,
                 'date'       => $today_date,
-                'mode'       => $mode,
             ];
 
             $pdf = PDF::loadView('fees.receipt', $data)
-            ->setPaper([0, 0, 116, 110], 'portrait') // custom size in points
+            ->setPaper([0, 0, 232, 220], 'portrait') // custom size in points
             ->setOptions([
                 'dpi' => 300,
                 'isHtml5ParserEnabled' => true,
@@ -1236,7 +1347,7 @@ class FeesController extends Controller
             file_put_contents($pdfFile, $pdf->output());
 
             // Ensure correct PATH for Ghostscript
-            putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
+            // putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
             // putenv('PATH=' . getenv('PATH') . ':/usr/bin:/usr/local/bin');
 
             if (!file_exists($pdfFile)) {
@@ -1244,18 +1355,26 @@ class FeesController extends Controller
             }
             if (!is_readable($pdfFile)) {
                 throw new \Exception("PDF not readable at {$pdfFile}");
-            }   
+            }
             // dd($pdfFile, file_exists($pdfFile), is_readable($pdfFile));
-            $imagick = new \Imagick();
-            $imagick->setResolution(500, 500);
-            $imagick->readImage("{$pdfFile}[0]");
-            $imagick->setImageFormat('jpg');
-            $imagick->setImageCompressionQuality(100);
-            $imagick->writeImage($jpgFile);
-            $imagick->clear();
-            $imagick->destroy();
-            // dd($jpgFile);
-            // dd(asset("uploads/receipts/{$payment_id}.jpg") . '?v=' . time());
+            $gs = env('GS_SYSTEM_PATH');   // <-- change after checking "which gs"
+
+            $cmd = "$gs -dNOPAUSE -dBATCH -sDEVICE=jpeg -dFirstPage=1 -dLastPage=1 -r500 -sOutputFile='$jpgFile' '$pdfFile' 2>&1";
+            exec($cmd, $out, $return);
+
+            if ($return !== 0) {
+                throw new \Exception("Ghostscript failed: " . implode("\n", $out));
+            }
+            // dd(asset("uploads/receipts/{$payment_id}.jpg"));
+            // $imagick = new \Imagick();
+            // $imagick->setResolution(500, 500);
+            // $imagick->readImage("{$pdfFile}[0]");
+            // $imagick->setImageFormat('jpg');
+            // $imagick->setImageCompressionQuality(100);
+            // $imagick->writeImage($jpgFile);
+            // $imagick->clear();
+            // $imagick->destroy();
+
             DB::commit();
 
             // $number = '7488699325';
@@ -1263,7 +1382,7 @@ class FeesController extends Controller
             Http::post('http://127.0.0.1:3000/send-media', [
                 'number'     => '91' . $number,
                 'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
-                'file'       => asset("uploads/receipts/{$payment_id}.jpg") . '?v=' . time(),
+                'file'       => asset("uploads/receipts/{$payment_id}.jpg"),
                 'payment_id' => $payment_id,
             ]);
 

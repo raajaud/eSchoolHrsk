@@ -29,7 +29,7 @@
                             <hr>
                             <div class="form-group col-sm-12 col-md-12">
                                 <div class="optional-fees-content">
-                                    <table class="table">
+                                    <table class="table table-responsive">
                                         <tbody>
                                         @foreach($optionalFeesData as $key =>$optionalFee)
                                             <tr>

@@ -520,6 +520,31 @@ class ParentApiController extends Controller {
         }
     }
 
+    public function getPoints(Request $request) {
+        $validator = Validator::make($request->all(), [
+            'child_id' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            ResponseService::validationError($validator->errors()->first());
+        }
+        try {
+            $children = Auth::user()->guardianRelationChild()->where('id', $request->child_id)->whereHas('user', function ($q) {
+                $q->whereNull('deleted_at');
+            })->first();
+
+            if (empty($children)) {
+                ResponseService::errorResponse("Child's Account is not Active.Contact School Support", NULL, config('constants.RESPONSE_CODE.INACTIVE_CHILD'));
+            }
+
+            $sessionYear = $children->points_history()->get();
+            ResponseService::successResponse("Session Year Fetched Successfully", $sessionYear ?? []);
+        } catch (Throwable $e) {
+            ResponseService::logErrorResponse($e);
+            ResponseService::errorResponse();
+        }
+    }
+
     public function getChildProfileDetails(Request $request) {
         $validator = Validator::make($request->all(), [
             'child_id' => 'required|numeric',
@@ -1893,31 +1918,6 @@ class ParentApiController extends Controller {
         // DB::setDefaultConnection('school');
         // return DB::getDatabaseName();
         return Auth::user();
-    }
-
-    public function getPoints(Request $request) {
-        $validator = Validator::make($request->all(), [
-            'child_id' => 'required|numeric',
-        ]);
-
-        if ($validator->fails()) {
-            ResponseService::validationError($validator->errors()->first());
-        }
-        try {
-            $children = Auth::user()->guardianRelationChild()->where('id', $request->child_id)->whereHas('user', function ($q) {
-                $q->whereNull('deleted_at');
-            })->first();
-
-            if (empty($children)) {
-                ResponseService::errorResponse("Child's Account is not Active.Contact School Support", NULL, config('constants.RESPONSE_CODE.INACTIVE_CHILD'));
-            }
-
-            $sessionYear = $children->points_history()->get();
-            ResponseService::successResponse("Point History Fetched Successfully", $sessionYear ?? []);
-        } catch (Throwable $e) {
-            ResponseService::logErrorResponse($e);
-            ResponseService::errorResponse();
-        }
     }
 
 

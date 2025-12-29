@@ -35,7 +35,7 @@
             </form>
 
             {{-- Table --}}
-            <table class="table table-bordered table-striped">
+            <table class="table table-bordered table-striped table-responsive">
                 <thead>
                     <tr>
                         <th>Guardian</th>
@@ -69,7 +69,7 @@
                                 <td>{{ ucfirst($charge->charge_type) }}</td>
 
                                 <td>
-                                    ₹
+
                                     <input type="text"
                                         name="amount[{{ $charge->id }}]"
                                         value="{{ number_format($charge->amount, 2, '.', '') }}"
