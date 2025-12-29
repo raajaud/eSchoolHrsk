@@ -7,8 +7,10 @@ use App\Imports\StudentsImport;
 use App\Imports\PaymentsImport;
 use App\Models\ClassSection;
 use App\Models\PaymentTransaction;
+use App\Models\Point;
 use App\Models\School;
 use App\Models\SessionYear;
+use App\Models\Students;
 use App\Models\User;
 use App\Models\UserCharge;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -1427,10 +1429,15 @@ class StudentController extends Controller {
                 if (!$student) continue;
 
                 $father = $guardian->full_name ?? '-';
-                $month = $guardian->due_month ?? now()->format('F-Y');
+                $monthlyCharge = UserCharge::where('user_id', $guardian->id)
+                ->where('charge_type', 'monthly_fees')
+                ->latest('id')
+                ->first();
+                $month = $monthlyCharge->description ?? '';
+                $monthly_due = $monthlyCharge->amount ?? $guardian->monthly_fees;
                 $previousMonth = now()->subMonth()->format('F-Y');
-                $tuition = (int) $guardian->monthly_due;
-                $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $guardian->monthly_due));
+                $tuition = (int) $monthly_due;
+                $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $monthly_due));
                 $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
 
                 $message = "Dear {$father},\n\n"
@@ -1442,7 +1449,7 @@ class StudentController extends Controller {
                 . "PhonePe: 7488699325@ybl\n\n"
                 . "- HRSK International School"
                 . "\n\n\n_System-generated. Verify details._";
-
+                // dd('message',$message);
                 $number = '7488699325';
                 Http::post('http://127.0.0.1:3000/send-message', [
                     'number'  => '91' . $number,
@@ -1472,4 +1479,369 @@ class StudentController extends Controller {
         }
     }
 
+    public function charges_monthly(Request $request)
+    {
+        // ---------- Generate Month Options ----------
+        // $start = \Carbon\Carbon::create(2025, 10, 1);
+        // $end = now()->startOfMonth();
+
+        // $months = [];
+
+        // while ($start <= $end) {
+        //     $months[] = [
+        //         'value' => $start->format('F-Y'),
+        //         'label' => $start->format('F-Y'),
+        //     ];
+        //     $start->addMonth();
+        // }
+
+        // // Latest month selected by default
+        // if ($request->month) {
+        //     try {
+        //         $selectedMonth = $request->month;
+        //     } catch (\Exception $e) {
+        //         // If invalid, fallback
+        //         $selectedMonth = end($months)['value'];
+        //     }
+        // } else {
+        //     $selectedMonth = end($months)['value'];
+        // }
+        // dd($selectedMonth);
+        // ---------- Fetch Charges by DESCRIPTION (not by date) ----------
+        // $charges = UserCharge::with(['user', 'user.child.class_section.class'])
+        //     ->where('description', $selectedMonth)
+        //     ->orderBy('user_id')
+        //     ->get();
+        $months = UserCharge::select('description')
+            ->distinct()
+            ->orderByRaw("STR_TO_DATE(description, '%M-%Y') ASC")
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'value' => $row->description,
+                    'label' => $row->description,
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        // Latest month as default
+        $selectedMonth = $request->month
+            && collect($months)->pluck('value')->contains($request->month)
+                ? $request->month
+                : ($months ? end($months)['value'] : null);
+
+        $charges = UserCharge::with([
+            'user',
+            'user.child',
+            'user.child.user',
+            'user.child.class_section.class'
+        ])
+        ->where('description', $selectedMonth)
+        ->orderBy('user_id')
+        ->get();
+
+        $guardians = User::with(['child.user', 'child.class_section.class'])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+
+        return view('students.charges_monthly', compact('charges', 'months', 'selectedMonth', 'guardians'));
+    }
+
+    public function updateAmount(Request $request)
+    {
+        foreach ($request->amount as $id => $amount) {
+            UserCharge::where('id', $id)->update([
+                'amount' => floatval($amount),
+            ]);
+        }
+
+        return back()->with('success', 'Charges updated successfully.');
+    }
+
+    public function charges_store(Request $request)
+    {
+        $request->validate([
+            'user_id'     => 'required|array',
+            'charge_type' => 'required|string',
+            'amount'      => 'required|numeric',
+            'description' => 'required|string',
+            'charge_date' => 'required|date',
+        ]);
+
+        $userIds = $request->user_id;
+
+        if (in_array('all', $userIds)) {
+            $userIds = User::with(['child.user', 'child.class_section.class'])
+                ->whereHas('roles', fn ($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->where('monthly_fees', '>', 0)
+                ->pluck('id')
+                ->toArray();
+        }
+
+        foreach ($userIds as $userId) {
+            UserCharge::create([
+                'user_id'     => $userId,
+                'charge_type' => $request->charge_type,
+                'amount'      => $request->amount,
+                'description' => $request->description,
+                'charge_date' => $request->charge_date,
+            ]);
+        }
+
+        return back()->with('success', 'Fees added successfully.');
+    }
+
+    public function fees_monthly(Request $request)
+    {
+        $classId = $request->class_id ?? null;
+
+        // Classes for filter dropdown
+        $class_sections = ClassSection::with('class')->get();
+
+        // Fetch students with guardian + class section
+        $guardians = User::with([
+                    'child.user',
+                    'child.class_section.class',
+                    'lastPayment'
+                ])
+                ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
+                ->whereHas('child')
+                ->where('status', 1)
+                ->where('monthly_fees', '>', 0)
+                ->get();
+        // dd($guardians);
+        return view('students.fees_monthly', compact('class_sections', 'guardians', 'classId'));
+    }
+
+    public function fees_monthly_save(Request $request)
+    {
+        $fees = $request->fees ?? [];
+
+        if (empty($fees)) {
+            return back()->with('error', 'No fees submitted.');
+        }
+
+        foreach ($fees as $guardianId => $feeAmount) {
+
+            // Skip empty or invalid
+            if ($feeAmount === null || $feeAmount === '') continue;
+
+            // Update guardian user record
+            User::where('id', $guardianId)
+                ->update([
+                    'monthly_fees' => $feeAmount,
+                    'updated_at' => now(),
+                ]);
+        }
+
+        return back()->with('success', 'Monthly fees updated successfully.');
+    }
+
+    public function all_points()
+    {
+        // $total = Point::where('child_id', 394)->sum('points');
+        // dd($total);
+        $classes = ClassSection::with('class')->get();
+        return view('points.all_points', compact('classes'));
+    }
+
+
+    public function all_points_list(Request $request)
+    {
+        $class_section_id = $request->class_section_id;
+
+        $students = Students::with(['user', 'class_section.class'])
+            ->when($class_section_id, function ($q) use ($class_section_id) {
+                $q->where('class_section_id', $class_section_id);
+            })
+            ->get();
+
+        // calculate sum of all points
+        $rows = [];
+        $no = 1;
+
+        foreach ($students as $student) {
+
+            $total = Point::where('child_id', $student->user_id)->sum('points');
+
+            $rows[] = [
+                'id'       => $student->user_id,
+                'no'       => $no++,
+                'student'  => $student->user->full_name,
+                'class'    => $student->class_section->full_name,
+                'points'   => $total ?? 0,
+            ];
+        }
+
+        // sort by points DESC
+        usort($rows, fn($a, $b) => $b['points'] <=> $a['points']);
+
+        return response()->json([
+            'total' => count($rows),
+            'rows'  => $rows,
+        ]);
+    }
+
+    public function student_points($id)
+    {
+        return Point::where('child_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function points_stats()
+    {
+        // Top 5 Students
+        $top_students = Students::with('user')
+            ->get()
+            ->map(function ($s) {
+                return [
+                    'name'   => $s->user->full_name,
+                    'points' => Point::where('child_id', $s->user_id)->sum('points')
+                ];
+            })
+            ->sortByDesc('points')
+            ->take(10)
+            ->values();
+
+        // Top 5 Classes
+        $top_classes = ClassSection::with('class')->get()
+            ->map(function ($c) {
+                $students = Students::where('class_section_id', $c->id)->pluck('user_id');
+                $total = Point::whereIn('child_id', $students)->sum('points');
+
+                return [
+                    'class'  => $c->full_name,
+                    'points' => $total
+                ];
+            })
+            ->sortByDesc('points')
+            ->take(10)
+            ->values();
+
+        // Top 5 Activities (remarks)
+        $top_activities = Point::select('remarks')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('remarks')
+            ->orderByDesc('total')
+            ->take(5)
+            ->get();
+
+        return response()->json([
+            'top_students'   => $top_students,
+            'top_classes'    => $top_classes,
+            'top_activities' => $top_activities,
+        ]);
+    }
+
+    public function points_index()
+    {
+        $classes = ClassSection::with('class')->get();
+
+        return view('points.index', compact('classes'));
+    }
+
+    public function points_list(Request $request)
+    {
+        $class_section_id = $request->class_section_id;
+
+        $students = Students::with(['user'])
+            ->where('class_section_id', $class_section_id)
+            ->get();
+
+        $rows = [];
+        $no = 1;
+
+        foreach ($students as $student) {
+            $point = Point::where('child_id', $student->user_id)->first();
+
+            $rows[] = [
+                'id'        => $student->user_id,
+                'no'        => $no++,
+                'student'   => $student->user->full_name,
+                'occasion'  => '',
+                'points'    => '',
+                'remarks'   => '',
+                'date'      => '',
+            ];
+            // 'occasion'  => $point->occasion ?? '',
+            // 'points'    => $point->points ?? '',
+            // 'remarks'   => $point->remarks ?? '',
+            // 'date'      => $point->date ?? '',
+        }
+
+        return response()->json([
+            'total' => count($rows),
+            'rows'  => $rows,
+        ]);
+    }
+
+    public function points_store(Request $request)
+    {
+        // dd($request->child_id);
+        foreach ($request->child_id as $index => $child_id) {
+            if ($request->points[$index] == null) {
+                continue;
+            }
+            Point::create(
+                [
+                    'child_id' => $child_id,
+                    'occasion' => $request->occasion[$index] ?? null,
+                    'points'   => $request->points[$index] ?? null,
+                    'remarks'  => $request->remarks[$index] ?? null,
+                    'date'     => $request->date[$index] ?? null,
+                ]
+            );
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function searchStudents(Request $request)
+    {
+        $keyword = $request->q;
+
+        $students = Students::with(['user', 'class_section.class'])
+            ->whereHas('user', fn($q) =>
+                $q->where('first_name', 'LIKE', "%$keyword%")
+                ->orWhere('last_name', 'LIKE', "%$keyword%")
+            )
+            ->limit(10)
+            ->get();
+
+        $results = [];
+
+        foreach ($students as $s) {
+            $results[] = [
+                'id' => $s->user_id,
+                'name' => $s->user->full_name,
+                'class' => $s->class_section->full_name ?? '',
+            ];
+        }
+
+        return response()->json($results);
+    }
+
+    public function saveStudentPoint(Request $request)
+    {
+        $point = Point::create([
+            'child_id' => $request->child_id,
+            'occasion' => $request->occasion ?? '',
+            'points'   => $request->points,
+            'remarks'  => $request->remarks ?? '',
+            'date'     => date('Y-m-d'),
+        ]);
+        // dd($point);
+        return response()->json(['status' => true, 'msg' => 'Point saved successfully']);
+    }
+
 }
+// INSERT INTO `user_charges` (`id`, `user_id`, `charge_type`, `amount`, `description`, `charge_date`, `is_paid`, `created_at`, `updated_at`) VALUES (NULL, '483', 'stationary', '1980.00', 'Books', '2025-09-01', '1', '2025-09-01 23:31:49', '2025-09-01 23:31:49'), (NULL, '483', 'monthly_fees', '1000.00', 'October-2025', '2025-10-01', '0', '2025-10-01 23:31:49', '2025-10-01 23:31:49') (NULL, '483', 'monthly_fees', '1000.00', 'November-2025', '2025-11-01', '0', '2025-11-01 23:31:49', '2025-11-01 23:31:49');
+
+// INSERT INTO `payment_transactions` (`id`, `user_id`, `amount`, `payment_gateway`, `order_id`, `payment_id`, `payment_signature`, `payment_status`, `school_id`, `date`, `created_at`, `updated_at`) VALUES (NULL, '302', '1100.00', 'cash', NULL, 'cash_unknown', NULL, 'succeed', '5', '25-08-2025', '2025-08-25 14:39:39', '2025-08-25 14:39:39');

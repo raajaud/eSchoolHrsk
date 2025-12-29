@@ -18,6 +18,182 @@
                 <span class="menu-title">{{ __('dashboard') }}</span>
             </a>
         </li>
+
+
+        {{-- student --}}
+        @canany(['student-create', 'student-list', 'student-reset-password', 'class-teacher','form-fields-list', 'form-fields-create', 'form-fields-edit', 'form-fields-delete','guardian-create'])
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="collapse" href="#student-menu" aria-expanded="false" aria-controls="academics-menu">
+                    <i class="fa fa-graduation-cap menu-icon"></i>
+                    <span class="menu-title">{{ __('students') }}</span>
+                    <i class="menu-arrow"></i>
+                </a>
+                <div class="collapse" id="student-menu">
+                    <ul class="nav flex-column sub-menu">
+                        {{-- Student Addmission Form Manage --}}
+                        {{-- @canany(['form-fields-list', 'form-fields-create', 'form-fields-edit', 'form-fields-delete'])
+                            <li class="nav-item">
+                                <a href="{{ route('form-fields.index') }}" class="nav-link">{{ __('admission_form_fields') }}</i></a>
+                            </li>
+                        @endcan --}}
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.dueManagement') }}" class="nav-link">Dues Management</a></li>
+                        @endcan
+
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('points.all_points') }}" class="nav-link">Points Management</a></li>
+                        @endcan
+
+                        <li class="nav-item">
+                            <a href="{{ route('fees.transactions.log.index') }}" class="nav-link" data-access="@hasFeatureAccess('Fees Management')"> {{__('Fees Transaction Logs') }}
+                            </a>
+                        </li>
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.create') }}" class="nav-link">{{ __('student_admission') }}</a></li>
+                        @endcan
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('online-registration.index') }}" class="nav-link" data-access="@hasFeatureAccess('Website Management')">{{ __('admission_inquiries') }}</a></li>
+                        @endcan
+                        @canany(['student-list', 'class-teacher'])
+                            <li class="nav-item"><a href="{{ route('students.index') }}" class="nav-link">{{ __('student_details') }}</a></li>
+                        @endcanany
+
+                        @can('student-reset-password')
+                            <li class="nav-item"><a href="{{ route('students.reset-password.index') }}" class="nav-link">{{ __('students') . ' ' . __('reset_password') }}</a></li>
+                        @endcan
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.create-bulk-data') }}" class="nav-link">{{ __('add_bulk_data') }}</a></li>
+                        @endcan
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.create-bulk-data-payments') }}" class="nav-link">Add Bulk Payments</a></li>
+                        @endcan
+
+                        {{-- @can('student-create')
+                            <li class="nav-item"><a href="{{ route('students.dueManagement') }}" class="nav-link">Dues Management</a></li>
+                        @endcan
+
+                        @can('student-create')
+                            <li class="nav-item"><a href="{{ route('points.all_points') }}" class="nav-link">Points Management</a></li>
+                        @endcan --}}
+
+
+
+                        @can('student-edit')
+                            <li class="nav-item"><a href="{{ route('students.upload-profile') }}" class="nav-link">{{ __('upload_profile_images') }}</a></li>
+                        @endcan
+
+                        {{-- parents --}}
+                        @can('guardian-create')
+                            <li class="nav-item">
+                                <a href="{{ route('guardian.index') }}" class="nav-link"> {{ __('Guardian') }} </a>
+                            </li>
+                        @endcan
+                    </ul>
+                </div>
+            </li>
+        @endcanany
+
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="collapse" href="#student-assembly" aria-expanded="false" aria-controls="academics-menu">
+                <i class="fa fa-graduation-cap menu-icon"></i>
+                <span class="menu-title">School Assembly</span>
+                <i class="menu-arrow"></i>
+            </a>
+            <div class="collapse" id="student-assembly">
+                <ul class="nav flex-column sub-menu">
+
+                    <li class="nav-item"><a href="{{ route('thought.index') }}" class="nav-link">Thoughts</a></li>
+                    <li class="nav-item"><a href="{{ route('word.index') }}" class="nav-link">Words</a></li>
+
+
+                </ul>
+            </div>
+        </li>
+
+
+        {{-- Holiday --}}
+        @canany(['holiday-create', 'holiday-list'])
+            <li class="nav-item">
+                @can('holiday-list')
+                    <a href="{{ route('holiday.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Holiday Management')">
+                        <i class="fa fa-calendar-check-o menu-icon"></i>
+                        <span class="menu-title">{{ __('holiday_list') }}</span>
+                    </a>
+                @endcan
+            </li>
+        @endcanany
+
+
+        {{-- exam --}}
+        @canany(['exam-create', 'exam-upload-marks', 'grade-create', 'exam-result','view-exam-marks'])
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="collapse" href="#exam-menu" aria-expanded="false"
+                   aria-controls="exam-menu" data-access="@hasFeatureAccess('Exam Management')">
+                   <i class="fa fa-book menu-icon"></i>
+                    <span class="menu-title">{{ __('Offline Exam') }}</span>
+                    <i class="menu-arrow"></i>
+                </a>
+                <div class="collapse" id="exam-menu">
+                    <ul class="nav flex-column sub-menu">
+                        @can('exam-create')
+                            <li class="nav-item">
+                                <a href="{{ route('exams.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')"> {{ __('manage_offline_exam') }}
+                                </a>
+                            </li>
+                        @endcan
+                        @can('view-exam-marks')
+                            <li class="nav-item">
+                                <a href="{{ route('exam.view-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')"> {{ __('Unpublished Exam Marks') }}
+                                </a>
+                            </li>
+                        @endcan
+
+                        @can('exam-upload-marks')
+
+                            <li class="nav-item">
+                                <a href="{{ route('exams.timetable') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
+                                    {{ __('timetable') }}
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a href="{{ route('exams.upload-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
+                                    {{ __('upload') }} {{ __('Exam Marks') }}
+                                </a>
+                            </li>
+
+                            <li class="nav-item">
+                                <a href="{{ route('exam.bulk-upload-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
+                                    {{ __('bulk upload') }} {{ __('Exam Marks') }}
+                                </a>
+                            </li>
+
+                        @endcan
+                        @can('exam-result')
+                            <li class="nav-item">
+                                <a href="{{ route('exams.get-result') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
+                                    {{ __('Published Exam Result') }}
+                                </a>
+                            </li>
+                        @endcan
+
+                        @can('grade-create')
+                            <li class="nav-item">
+                                <a href="{{ route('exam.grade.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
+                                    {{ __('exam_grade') }}
+                                </a>
+                            </li>
+                        @endcan
+                    </ul>
+                </div>
+            </li>
+        @endcan
+
         {{-- Academics --}}
         @canany(['medium-create','section-create','subject-create','class-create','subject-create','promote-student-create','transfer-student-create'])
             <li class="nav-item">
@@ -92,22 +268,6 @@
         @endrole
 
 
-        <li class="nav-item">
-            <a class="nav-link" data-toggle="collapse" href="#student-assembly" aria-expanded="false" aria-controls="academics-menu">
-                <i class="fa fa-graduation-cap menu-icon"></i>
-                <span class="menu-title">School Assembly</span>
-                <i class="menu-arrow"></i>
-            </a>
-            <div class="collapse" id="student-assembly">
-                <ul class="nav flex-column sub-menu">
-
-                    <li class="nav-item"><a href="{{ route('thought.index') }}" class="nav-link">Thoughts</a></li>
-                    <li class="nav-item"><a href="{{ route('word.index') }}" class="nav-link">Words</a></li>
-
-
-                </ul>
-            </div>
-        </li>
 
         {{-- Class Section For Teacher --}}
         @role('Teacher')
@@ -118,64 +278,6 @@
             </a>
         </li>
         @endrole
-
-        {{-- student --}}
-        @canany(['student-create', 'student-list', 'student-reset-password', 'class-teacher','form-fields-list', 'form-fields-create', 'form-fields-edit', 'form-fields-delete','guardian-create'])
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="collapse" href="#student-menu" aria-expanded="false" aria-controls="academics-menu">
-                    <i class="fa fa-graduation-cap menu-icon"></i>
-                    <span class="menu-title">{{ __('students') }}</span>
-                    <i class="menu-arrow"></i>
-                </a>
-                <div class="collapse" id="student-menu">
-                    <ul class="nav flex-column sub-menu">
-                        {{-- Student Addmission Form Manage --}}
-                        {{-- @canany(['form-fields-list', 'form-fields-create', 'form-fields-edit', 'form-fields-delete'])
-                            <li class="nav-item">
-                                <a href="{{ route('form-fields.index') }}" class="nav-link">{{ __('admission_form_fields') }}</i></a>
-                            </li>
-                        @endcan --}}
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.create') }}" class="nav-link">{{ __('student_admission') }}</a></li>
-                        @endcan
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('online-registration.index') }}" class="nav-link" data-access="@hasFeatureAccess('Website Management')">{{ __('admission_inquiries') }}</a></li>
-                        @endcan
-                        @canany(['student-list', 'class-teacher'])
-                            <li class="nav-item"><a href="{{ route('students.index') }}" class="nav-link">{{ __('student_details') }}</a></li>
-                        @endcanany
-
-                        @can('student-reset-password')
-                            <li class="nav-item"><a href="{{ route('students.reset-password.index') }}" class="nav-link">{{ __('students') . ' ' . __('reset_password') }}</a></li>
-                        @endcan
-
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.create-bulk-data') }}" class="nav-link">{{ __('add_bulk_data') }}</a></li>
-                        @endcan
-
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.create-bulk-data-payments') }}" class="nav-link">Add Bulk Payments</a></li>
-                        @endcan
-
-                        @can('student-create')
-                            <li class="nav-item"><a href="{{ route('students.dueManagement') }}" class="nav-link">Dues Management</a></li>
-                        @endcan
-
-
-                        @can('student-edit')
-                            <li class="nav-item"><a href="{{ route('students.upload-profile') }}" class="nav-link">{{ __('upload_profile_images') }}</a></li>
-                        @endcan
-
-                        {{-- parents --}}
-                        @can('guardian-create')
-                            <li class="nav-item">
-                                <a href="{{ route('guardian.index') }}" class="nav-link"> {{ __('Guardian') }} </a>
-                            </li>
-                        @endcan
-                    </ul>
-                </div>
-            </li>
-        @endcanany
 
         {{-- teacher --}}
         @can('teacher-create')
@@ -244,17 +346,6 @@
             @endcanany
         @endif
 
-        {{-- Holiday --}}
-        @canany(['holiday-create', 'holiday-list'])
-            <li class="nav-item">
-                @can('holiday-list')
-                    <a href="{{ route('holiday.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Holiday Management')">
-                        <i class="fa fa-calendar-check-o menu-icon"></i>
-                        <span class="menu-title">{{ __('holiday_list') }}</span>
-                    </a>
-                @endcan
-            </li>
-        @endcanany
         {{-- subject lesson --}}
         @canany(['lesson-list', 'lesson-create', 'lesson-edit', 'lesson-delete', 'topic-list', 'topic-create',
             'topic-edit', 'topic-delete'])
@@ -376,71 +467,6 @@
                     <i class="fa fa-bullhorn menu-icon"></i>
                     <span class="menu-title">{{ __('announcement') }}</span>
                 </a>
-            </li>
-        @endcan
-
-        {{-- exam --}}
-        @canany(['exam-create', 'exam-upload-marks', 'grade-create', 'exam-result','view-exam-marks'])
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="collapse" href="#exam-menu" aria-expanded="false"
-                   aria-controls="exam-menu" data-access="@hasFeatureAccess('Exam Management')">
-                   <i class="fa fa-book menu-icon"></i>
-                    <span class="menu-title">{{ __('Offline Exam') }}</span>
-                    <i class="menu-arrow"></i>
-                </a>
-                <div class="collapse" id="exam-menu">
-                    <ul class="nav flex-column sub-menu">
-                        @can('exam-create')
-                            <li class="nav-item">
-                                <a href="{{ route('exams.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')"> {{ __('manage_offline_exam') }}
-                                </a>
-                            </li>
-                        @endcan
-                        @can('view-exam-marks')
-                            <li class="nav-item">
-                                <a href="{{ route('exam.view-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')"> {{ __('Unpublished Exam Marks') }}
-                                </a>
-                            </li>
-                        @endcan
-
-                        @can('exam-upload-marks')
-
-                            <li class="nav-item">
-                                <a href="{{ route('exams.timetable') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
-                                    {{ __('timetable') }}
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('exams.upload-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
-                                    {{ __('upload') }} {{ __('Exam Marks') }}
-                                </a>
-                            </li>
-
-                            <li class="nav-item">
-                                <a href="{{ route('exam.bulk-upload-marks') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
-                                    {{ __('bulk upload') }} {{ __('Exam Marks') }}
-                                </a>
-                            </li>
-
-                        @endcan
-                        @can('exam-result')
-                            <li class="nav-item">
-                                <a href="{{ route('exams.get-result') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
-                                    {{ __('Published Exam Result') }}
-                                </a>
-                            </li>
-                        @endcan
-
-                        @can('grade-create')
-                            <li class="nav-item">
-                                <a href="{{ route('exam.grade.index') }}" class="nav-link" data-name="{{ Auth::user()->getRoleNames()[0] }}" data-access="@hasFeatureAccess('Exam Management')">
-                                    {{ __('exam_grade') }}
-                                </a>
-                            </li>
-                        @endcan
-                    </ul>
-                </div>
             </li>
         @endcan
 

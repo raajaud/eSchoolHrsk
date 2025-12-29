@@ -465,6 +465,25 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::post('fees/print-filtered-due-slips', [StudentController::class, 'dueSlips'])->name('students.printFilteredDueSlips');
 
 
+            Route::get('fees-details', [StudentController::class, 'charges_monthly'])->name('charges_monthly');
+            Route::post('fees-update-amount', [StudentController::class, 'updateAmount'])->name('feesUpdateAmount');
+            Route::post('/charges/store', [StudentController::class, 'charges_store'])->name('charges.store');
+
+            Route::get('fees-monthly', [StudentController::class, 'fees_monthly'])->name('fees_monthly');
+            Route::post('fees-monthly-save', [StudentController::class, 'fees_monthly_save'])->name('fees_monthly_save');
+
+            Route::get('all-points', [StudentController::class, 'all_points'])->name('points.all_points');
+            Route::get('all-points/list', [StudentController::class, 'all_points_list'])->name('points.all_points_list');
+            Route::get('student-points/{id}', [StudentController::class, 'student_points'])->name('points.student_points');
+            Route::get('points/stats', [StudentController::class, 'points_stats'])->name('points.stats');
+
+            Route::get('search-students', [StudentController::class, 'searchStudents'])->name('students.search');
+            Route::post('save-student-point', [StudentController::class, 'saveStudentPoint'])->name('students.save_point');
+
+            Route::get('points', [StudentController::class, 'points_index'])->name('points.index');
+            Route::get('points/list', [StudentController::class, 'points_list'])->name('points.list');
+            Route::post('points/store', [StudentController::class, 'points_store'])->name('points.store');
+
 
             Route::get('create-bulk-payments', [StudentController::class, 'createBulkPaymentData'])->name('students.create-bulk-data-payments');
             Route::post('store-bulk-payments', [StudentController::class, 'storeBulkPayments'])->name('students.store-bulk-data-payments');
@@ -609,6 +628,9 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
         // Exams
         Route::get('exams/get-subjects/{exam_id}', [ExamController::class, 'getSubjectByExam'])->name('exams.subject');
         Route::post('exams/publish/{id}', [ExamController::class, 'publishExamResult'])->name('exams.publish');
+
+        Route::post('exams/publish', [ExamController::class, 'publishExamResultByName'])->name('exams.publishByName');
+
         Route::put("exams/{id}/restore", [ExamController::class, 'restore'])->name('exams.restore');
         Route::delete("exams/{id}/deleted", [ExamController::class, 'trash'])->name('exams.trash');
 
@@ -679,6 +701,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             // Transaction list
             Route::get('/transaction-logs', [FeesController::class, 'feesTransactionsLogsIndex'])->name('fees.transactions.log.index');
             Route::get('/transaction-logs/list', [FeesController::class, 'feesTransactionsLogsList'])->name('fees.transactions.log.list');
+            // routes/web.php
+            Route::get('fees-transactions-log-stats', [FeesController::class, 'feesTransactionsLogsStats'])->name('fees.transactions.log.stats');
 
             // Receipt
             Route::get('/paid/receipt-pdf/{id}', [FeesController::class, 'feesPaidReceiptPDF'])->name('fees.paid.receipt.pdf');

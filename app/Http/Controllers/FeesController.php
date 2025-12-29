@@ -599,22 +599,58 @@ class FeesController extends Controller
         $sort = request('sort', 'id');
         $order = request('order', 'DESC');
 
-        //Fetching Students Data on Basis of Class Section ID with Relation fees paid
-        // $sql = $this->paymentTransaction->builder()->with('user:id,first_name,last_name,date as created_at');
         $sql = $this->paymentTransaction
             ->builder()
             ->with('user:id,first_name,last_name')
             ->selectRaw('payment_transactions.*, payment_transactions.date as date');
 
         if (!empty($request->search)) {
-            $search = $request->search;
-            $sql->where(function ($q) use ($search) {
-                $q->where('id', 'LIKE', "%$search%")
-                    ->orwhere('order_id', 'LIKE', "%$search%")->orwhere('payment_id', 'LIKE', "%$search%")
-                    ->orwhere('payment_gateway', 'LIKE', "%$search%")->orwhere('amount', 'LIKE', "%$search%")
-                    ->orWhereHas('user', function ($q) use ($search) {
-                        $q->where('first_name', 'LIKE', "%$search%")->orwhere('last_name', 'LIKE', "%$search%");
-                    });
+            $search = trim($request->search);
+            $parts = preg_split('/\s+/', $search); // split on spaces
+
+            $sql->where(function ($q) use ($search, $parts) {
+                $q->where('id', 'LIKE', "%{$search}%")
+                ->orWhere('payment_id', 'LIKE', "%{$search}%");
+
+                // guardian name: require each part to match either first_name OR last_name
+                $q->orWhereHas('user', function ($qUser) use ($parts, $search) {
+                    if (count($parts) > 1) {
+                        $qUser->where(function ($qq) use ($parts) {
+                            foreach ($parts as $part) {
+                                $qq->where(function ($qPart) use ($part) {
+                                    $qPart->where('first_name', 'LIKE', "%{$part}%")
+                                        ->orWhere('last_name', 'LIKE', "%{$part}%");
+                                });
+                            }
+                        });
+                    } else {
+                        $qUser->where('first_name', 'LIKE', "%{$search}%")
+                            ->orWhere('last_name', 'LIKE', "%{$search}%")
+                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                    }
+                });
+
+                // child name: same logic, drilling through relations user.child.user
+                $q->orWhereHas('user.child.user', function ($qChildUser) use ($parts, $search) {
+                    if (count($parts) > 1) {
+                        $qChildUser->where(function ($qq) use ($parts) {
+                            foreach ($parts as $part) {
+                                $qq->where(function ($qPart) use ($part) {
+                                    $qPart->where('first_name', 'LIKE', "%{$part}%")
+                                        ->orWhere('last_name', 'LIKE', "%{$part}%");
+                                });
+                            }
+                        });
+                    } else {
+                        $qChildUser->where('first_name', 'LIKE', "%{$search}%")
+                                ->orWhere('last_name', 'LIKE', "%{$search}%")
+                                ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                    }
+                });
+
+                $q->orWhereHas('user.child.class_section.class', function ($qChildUser) use ($search) {
+                    $qChildUser->where('name', 'LIKE', "{$search}");
+                });
             });
         }
 
@@ -650,12 +686,134 @@ class FeesController extends Controller
                 }
             }
             // dd($childs);
-            $tempRow['full_name'] = $row->user->full_name.' - '.$student;
+            $tempRow['full_name'] = $row->user->full_name;
+            $tempRow['payment_status'] = $row->payment_id;
+            $tempRow['payment_gateway'] = ucfirst($row->payment_gateway);
+            $tempRow['amount'] = '₹'.$row->amount;
+            $tempRow['date'] = Carbon::parse($row->date)->format('d M Y');
+            $tempRow['children'] = $student;
             $tempRow['no'] = $no++;
             $rows[] = $tempRow;
         }
         $bulkData['rows'] = $rows;
         return response()->json($bulkData);
+    }
+
+
+    public function feesTransactionsLogsStats(Request $request)
+    {
+        // Apply the same feature/permission checks as other functions
+        ResponseService::noFeatureThenRedirect('Fees Management');
+        ResponseService::noPermissionThenRedirect('fees-paid');
+
+        $sql = $this->paymentTransaction->builder();
+
+        if (!empty($request->search)) {
+            $search = trim($request->search);
+            $parts = preg_split('/\s+/', $search); // split on spaces
+
+            $sql->where(function ($q) use ($search, $parts) {
+                $q->where('id', 'LIKE', "%{$search}%")
+                ->orWhere('payment_id', 'LIKE', "%{$search}%");
+
+                // guardian name: require each part to match either first_name OR last_name
+                $q->orWhereHas('user', function ($qUser) use ($parts, $search) {
+                    if (count($parts) > 1) {
+                        $qUser->where(function ($qq) use ($parts) {
+                            foreach ($parts as $part) {
+                                $qq->where(function ($qPart) use ($part) {
+                                    $qPart->where('first_name', 'LIKE', "%{$part}%")
+                                        ->orWhere('last_name', 'LIKE', "%{$part}%");
+                                });
+                            }
+                        });
+                    } else {
+                        $qUser->where('first_name', 'LIKE', "%{$search}%")
+                            ->orWhere('last_name', 'LIKE', "%{$search}%")
+                            ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                    }
+                });
+
+                // child name: same logic, drilling through relations user.child.user
+                $q->orWhereHas('user.child.user', function ($qChildUser) use ($parts, $search) {
+                    if (count($parts) > 1) {
+                        $qChildUser->where(function ($qq) use ($parts) {
+                            foreach ($parts as $part) {
+                                $qq->where(function ($qPart) use ($part) {
+                                    $qPart->where('first_name', 'LIKE', "%{$part}%")
+                                        ->orWhere('last_name', 'LIKE', "%{$part}%");
+                                });
+                            }
+                        });
+                    } else {
+                        $qChildUser->where('first_name', 'LIKE', "%{$search}%")
+                                ->orWhere('last_name', 'LIKE', "%{$search}%")
+                                ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                    }
+                });
+                // ->class_section->class->name
+                $q->orWhereHas('user.child.class_section.class', function ($qChildUser) use ($search) {
+                    $qChildUser->where('name', 'LIKE', "%{$search}%");
+                });
+            });
+        }
+
+        // Filter by Payment Status
+        if (!empty($request->payment_status)) {
+            $sql->where('payment_status', $request->payment_status);
+        }
+
+        // Filter by Month
+        if ($request->month) {
+            $sql->whereMonth('date', $request->month);
+        }
+
+        // 1. Total Transactions
+        $total_transactions = $sql->count();
+
+        // 2. Total Amount
+        $total_amount = $sql->sum('amount');
+
+        // 3. Transactions by Status for Pie/Doughnut Chart
+        $status_data = $sql->selectRaw('payment_status, COUNT(*) as count, SUM(amount) as sum_amount')
+                        ->groupBy('payment_status')
+                        ->get()
+                        ->keyBy('payment_status');
+
+        $succeed_count = $status_data->get('succeed')['count'] ?? 0;
+        $failed_count = $status_data->get('failed')['count'] ?? 0;
+        $pending_count = $status_data->get('pending')['count'] ?? 0;
+
+        $succeed_amount = $status_data->get('succeed')['sum_amount'] ?? 0;
+        $failed_amount = $status_data->get('failed')['sum_amount'] ?? 0;
+        $pending_amount = $status_data->get('pending')['sum_amount'] ?? 0;
+
+        // 4. Monthly Trend Data for Line/Bar Chart (if no month filter is applied)
+        $monthly_trend_data = [];
+        if (!$request->month) {
+            $monthly_trend_data = $sql->selectRaw('MONTH(date) as month, SUM(amount) as total_collected_amount')
+                                    ->groupBy('month')
+                                    ->orderBy('month')
+                                    ->get()
+                                    ->keyBy('month');
+        }
+
+        $statistics = [
+            'total_transactions' => $total_transactions,
+            'total_amount' => $total_amount,
+
+            'succeed_count' => $succeed_count,
+            'failed_count' => $failed_count,
+            'pending_count' => $pending_count,
+
+            'succeed_amount' => $succeed_amount,
+            'failed_amount' => $failed_amount,
+            'pending_amount' => $pending_amount,
+
+            'monthly_trend' => $monthly_trend_data,
+        ];
+
+        return response()->json($statistics);
     }
 
     /* START : Fees Paid Module */
@@ -985,6 +1143,118 @@ class FeesController extends Controller
     //     }
     // }
 
+    // public function payCompulsoryFeesStore(Request $request)
+    // {
+    //     ResponseService::noFeatureThenRedirect('Fees Management');
+    //     ResponseService::noPermissionThenRedirect('fees-paid');
+
+    //     $request->validate([
+    //         'parent_id' => 'required|numeric',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $today_date = $request->date;
+    //         $payment_id = $request->cheque_no ?? uniqid('cash_');
+    //         $amount = is_numeric($request->payment) ? (float)$request->payment : 0;
+    //         $formattedAmount = number_format((float)$amount, 0);
+
+    //         PaymentTransaction::create([
+    //             'user_id'         => $request->parent_id,
+    //             'amount'          => $amount,
+    //             'payment_gateway' => 'cash',
+    //             'payment_id'      => $payment_id,
+    //             'payment_status'  => 'success',
+    //             'school_id'       => 5,
+    //             'date'            => $today_date,
+    //         ]);
+
+    //         $parent  = User::where('id', $request->parent_id)->with('student')->first();
+    //         $father  = $parent->full_name ?? 'Parent';
+    //         // $student = $parent->student->user->full_name ?? 'your ward';
+    //         $number  = $parent->mobile ?? null;
+    //         $dues = (int) ($parent->total_fees - $parent->total_paid);
+    //         $month = $parent->due_month;;
+
+    //         $student = '';
+    //         $class = '';
+    //         $count = $parent->child->count();
+
+    //         foreach ($parent->child as $key => $child) {
+    //             $student .= $child->user->full_name;
+    //             $class .= $child->class_section->class->name ?? '-';
+
+    //             if ($count > 1 && $key < $count - 2) {
+    //                 $student .= ', ';
+    //                 $class .= ', ';
+    //             } elseif ($count > 1 && $key == $count - 2) {
+    //                 $student .= ' & ';
+    //                 $class .= ' & ';
+    //             }
+    //         }
+
+    //         if (!$number) {
+    //             throw new \Exception('Parent mobile number not found.');
+    //         }
+
+
+    //         putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
+    //         // Generate receipt as image
+    //         $data = [
+    //             'payment_id' => $payment_id,
+    //             'student'    => $student,
+    //             'class'      => $class,
+    //             'father'     => $father,
+    //             'amount'     => $amount,
+    //             'dues'       => $dues,
+    //             'month'       => $month,
+    //             'date'       => $today_date,
+    //         ];
+
+    //         $pdf = PDF::loadView('fees.receipt', $data)
+    //         ->setPaper([0, 0, 116, 110], 'portrait') // custom size in points
+    //         ->setOptions([
+    //             'dpi' => 300,
+    //             'isHtml5ParserEnabled' => true,
+    //             'isRemoteEnabled' => true,
+    //             'defaultFont' => 'DejaVu Sans', // important!
+    //         ]);
+
+    //         $path = public_path("uploads/receipts/{$payment_id}.jpg");
+    //         if (!file_exists(dirname($path))) mkdir(dirname($path), 0777, true);
+    //         file_put_contents(str_replace('.jpg', '.pdf', $path), $pdf->output());
+
+    //         // Convert PDF → JPG (requires Imagick)
+    //         $imagick = new \Imagick();
+    //         $imagick->setResolution(500, 500); // 🔹 increase DPI for sharper image
+    //         $imagick->readImage(str_replace('.jpg', '.pdf', $path));
+    //         $imagick->setImageFormat('jpg');
+    //         $imagick->setImageCompressionQuality(100); // optional: better quality
+    //         $imagick->writeImage($path);
+    //         $imagick->clear();
+    //         $imagick->destroy();
+    //         // dd('<img src="'.$path.'">');
+    //         // dd('Done');
+    //         DB::commit();
+
+    //         $number = '7488699325';
+    //         // Send to WhatsApp bot
+    //         Http::post('http://127.0.0.1:3000/send-media', [
+    //             'number'     => '91' . $number,
+    //             'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
+    //             'file'       => asset("uploads/receipts/{$payment_id}.jpg"),
+    //             'payment_id' => $payment_id,
+    //         ]);
+
+    //         ResponseService::successResponse("Payment recorded and message sent successfully.");
+    //     } catch (Throwable $e) {
+    //         DB::rollback();
+    //         ResponseService::logErrorResponse($e, 'FeesController -> compulsoryFeesPaidStore');
+    //         ResponseService::errorResponse();
+    //     }
+    // }
+
     public function payCompulsoryFeesStore(Request $request)
     {
         ResponseService::noFeatureThenRedirect('Fees Management');
@@ -997,7 +1267,9 @@ class FeesController extends Controller
         try {
             DB::beginTransaction();
 
-            $today_date = $request->date;
+            $date = $request->date;
+            $today_date = \Carbon\Carbon::createFromFormat('d-m-Y', $date)->format('Y-m-d');
+
             $payment_id = $request->cheque_no ?? uniqid('cash_');
             $amount = is_numeric($request->payment) ? (float)$request->payment : 0;
             $formattedAmount = number_format((float)$amount, 0);
@@ -1017,7 +1289,12 @@ class FeesController extends Controller
             // $student = $parent->student->user->full_name ?? 'your ward';
             $number  = $parent->mobile ?? null;
             $dues = (int) ($parent->total_fees - $parent->total_paid);
-            $month = $parent->due_month;;
+            // $month = $parent->due_month;
+            $month = UserCharge::where('user_id', $parent->id)
+            ->where('charge_type', 'monthly_fees')
+            ->latest('id')
+            ->value('description');
+            // dd($month);
 
             $student = '';
             $class = '';
@@ -1040,9 +1317,6 @@ class FeesController extends Controller
                 throw new \Exception('Parent mobile number not found.');
             }
 
-
-            putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
-            // Generate receipt as image
             $data = [
                 'payment_id' => $payment_id,
                 'student'    => $student,
@@ -1055,32 +1329,55 @@ class FeesController extends Controller
             ];
 
             $pdf = PDF::loadView('fees.receipt', $data)
-            ->setPaper([0, 0, 116, 110], 'portrait') // custom size in points
+            ->setPaper([0, 0, 232, 220], 'portrait') // custom size in points
             ->setOptions([
                 'dpi' => 300,
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
-                'defaultFont' => 'DejaVu Sans', // important!
             ]);
 
             $path = public_path("uploads/receipts/{$payment_id}.jpg");
-            if (!file_exists(dirname($path))) mkdir(dirname($path), 0777, true);
-            file_put_contents(str_replace('.jpg', '.pdf', $path), $pdf->output());
+            $pdfFile = str_replace('.jpg', '.pdf', $path);
+            $jpgFile = $path;
 
-            // Convert PDF → JPG (requires Imagick)
-            $imagick = new \Imagick();
-            $imagick->setResolution(500, 500); // 🔹 increase DPI for sharper image
-            $imagick->readImage(str_replace('.jpg', '.pdf', $path));
-            $imagick->setImageFormat('jpg');
-            $imagick->setImageCompressionQuality(100); // optional: better quality
-            $imagick->writeImage($path);
-            $imagick->clear();
-            $imagick->destroy();
-            // dd('<img src="'.$path.'">');
-            // dd('Done');
+            // Save the PDF before converting
+            if (!file_exists(dirname($pdfFile))) {
+                mkdir(dirname($pdfFile), 0777, true);
+            }
+            file_put_contents($pdfFile, $pdf->output());
+
+            // Ensure correct PATH for Ghostscript
+            // putenv('PATH=' . getenv('PATH') . ':' . env('SYSTEM_PATH'));
+            // putenv('PATH=' . getenv('PATH') . ':/usr/bin:/usr/local/bin');
+
+            if (!file_exists($pdfFile)) {
+                throw new \Exception("PDF not found at {$pdfFile}");
+            }
+            if (!is_readable($pdfFile)) {
+                throw new \Exception("PDF not readable at {$pdfFile}");
+            }
+            // dd($pdfFile, file_exists($pdfFile), is_readable($pdfFile));
+            $gs = env('GS_SYSTEM_PATH');   // <-- change after checking "which gs"
+
+            $cmd = "$gs -dNOPAUSE -dBATCH -sDEVICE=jpeg -dFirstPage=1 -dLastPage=1 -r500 -sOutputFile='$jpgFile' '$pdfFile' 2>&1";
+            exec($cmd, $out, $return);
+
+            if ($return !== 0) {
+                throw new \Exception("Ghostscript failed: " . implode("\n", $out));
+            }
+            // dd(asset("uploads/receipts/{$payment_id}.jpg"));
+            // $imagick = new \Imagick();
+            // $imagick->setResolution(500, 500);
+            // $imagick->readImage("{$pdfFile}[0]");
+            // $imagick->setImageFormat('jpg');
+            // $imagick->setImageCompressionQuality(100);
+            // $imagick->writeImage($jpgFile);
+            // $imagick->clear();
+            // $imagick->destroy();
+
             DB::commit();
 
-            $number = '7488699325';
+            // $number = '7488699325';
             // Send to WhatsApp bot
             Http::post('http://127.0.0.1:3000/send-media', [
                 'number'     => '91' . $number,

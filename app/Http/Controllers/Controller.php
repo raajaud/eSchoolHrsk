@@ -401,8 +401,35 @@ class Controller extends BaseController {
         $schoolSettings = $this->cache->getSchoolSettings('*', $school->id);
         if ($schoolSettings['SCHOOL_RECAPTCHA_SITE_KEY'] ?? '') {
             $validator = Validator::make($request->all(), [
-                'g-recaptcha-response' => 'required',
+                'name'    => 'required|string|max:255',
+                'email'   => 'required|email',
+                'subject' => 'required|string|max:255',
+                'message' => [
+                    'required',
+                    'string',
+                    'max:2000',
+                    function ($attribute, $value, $fail) {
+                        // Block URLs
+                        if (preg_match('/https?:\/\/|www\./i', $value)) {
+                            $fail('Links are not allowed in the message.');
+                        }
+
+                        // Block suspicious words (spam keywords)
+                        $spamWords = ['loan', 'crypto', 'forex', 'porn', 'sex', 'viagra', 'betting', 'casino'];
+                        foreach ($spamWords as $word) {
+                            if (stripos($value, $word) !== false) {
+                                $fail('Your message looks like spam.');
+                            }
+                        }
+
+                        // Block repeated characters (e.g., !!!!!!, $$$$$$, etc.)
+                        if (preg_match('/(.)\1{5,}/', $value)) {
+                            $fail('Message contains repeated characters.');
+                        }
+                    }
+                ],
             ]);
+
             if ($validator->fails()) {
                 ResponseService::errorResponse($validator->errors()->first());
             }

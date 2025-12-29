@@ -300,23 +300,52 @@ $('#filterBtnFees').click(function() {
     });
 });
 
+// function renderTable(data) {
+//     let tbody = '';
+//     data.forEach(g => {
+//         const lastPayment = g.last_payment?.amount ?
+//             `₹${g.last_payment.amount} <small>(${g.last_payment.date})</small>` : '-';
+//         tbody += `<tr>
+//             <td><input type="checkbox" class="selectRow" value="${g.id}"></td>
+//             <td>${g.id}</td>
+//             <td>${g.full_name}</td>
+//             <td>${g.mobile || '-'}</td>
+//             <td>${g.child.map(c=>c.user.full_name).join(', ')}</td>
+//             <td>${g.child.map(c=>c.class_section.class.name).join(', ')}</td>
+//             <td data-dues="${g.total_dues}">₹${g.total_dues.toLocaleString()}</td>
+//             <td data-amount="${g.last_payment?.amount || 0}" data-date="${g.last_payment?.date || ''}">${lastPayment}</td>
+//         </tr>`;
+//     });
+//     $('#dueTable tbody').html(tbody);
+// }
 function renderTable(data) {
     let tbody = '';
-    data.forEach(g => {
-        const lastPayment = g.last_payment?.amount ?
-            `₹${g.last_payment.amount} <small>(${g.last_payment.date})</small>` : '-';
+    data.forEach((g, i) => {
+        const lastPayment = g.last_payment?.amount
+            ? `₹${g.last_payment.amount} <small>(${g.last_payment.date})</small>`
+            : '-';
+
         tbody += `<tr>
+            <td><input type="checkbox" class="selectRow" value="${g.id}"></td>
+            <td>${i + 1}</td>
             <td>${g.id}</td>
             <td>${g.full_name}</td>
             <td>${g.mobile || '-'}</td>
-            <td>${g.child.map(c=>c.user.full_name).join(', ')}</td>
-            <td>${g.child.map(c=>c.class_section.class.name).join(', ')}</td>
+            <td>${g.child.map(c => c.user.full_name).join(', ')}</td>
+            <td>${g.child.map(c => c.class_section.class.name).join(', ')}</td>
             <td data-dues="${g.total_dues}">₹${g.total_dues.toLocaleString()}</td>
-            <td data-amount="${g.last_payment?.amount || 0}" data-date="${g.last_payment?.date || ''}">${lastPayment}</td>
+            <td data-amount="${g.last_payment?.amount || 0}" data-date="${g.last_payment?.date || ''}">
+                ${lastPayment}
+            </td>
         </tr>`;
     });
+
     $('#dueTable tbody').html(tbody);
 }
+
+$(document).on("change", "#selectAll", function () {
+    $(".selectRow").prop("checked", $(this).prop("checked"));
+});
 
 // Sorting feature
 $(document).on('click', 'th.sortable', function() {
@@ -335,10 +364,45 @@ $(document).on('click', 'th.sortable', function() {
 });
 
 
+// $('#sendWhatsapp').click(() => {
+//     const guardian_ids = $('#dueTable tbody tr').map(function() {
+//         return $(this).find('td').eq(0).text();
+//     }).get();
+
+//     $('<form>', {
+//         action: '{{ route("students.sendFilteredWhatsapp") }}',
+//         method: 'POST'
+//     })
+//     .append($('<input>', { type:'hidden', name:'_token', value:'{{ csrf_token() }}' }))
+//     .append($('<input>', { type:'hidden', name:'guardian_ids', value: JSON.stringify(guardian_ids) }))
+//     .appendTo('body').submit();
+
+// });
+
+// $('#printSlips').click(() => {
+//     const guardian_ids = $('#dueTable tbody tr').map(function() {
+//         return $(this).find('td').eq(0).text();
+//     }).get();
+
+//     $('<form>', {
+//         action: '{{ route("students.printFilteredDueSlips") }}',
+//         method: 'POST'
+//     })
+//     .append($('<input>', { type:'hidden', name:'_token', value:'{{ csrf_token() }}' }))
+//     .append($('<input>', { type:'hidden', name:'guardian_ids', value: JSON.stringify(guardian_ids) }))
+//     .appendTo('body').submit();
+// });
+
 $('#sendWhatsapp').click(() => {
-    const guardian_ids = $('#dueTable tbody tr').map(function() {
-        return $(this).find('td').eq(0).text();
+
+    const guardian_ids = $('.selectRow:checked').map(function() {
+        return $(this).val();
     }).get();
+
+    if (guardian_ids.length === 0) {
+        alert("Please select at least one guardian");
+        return;
+    }
 
     $('<form>', {
         action: '{{ route("students.sendFilteredWhatsapp") }}',
@@ -347,21 +411,18 @@ $('#sendWhatsapp').click(() => {
     .append($('<input>', { type:'hidden', name:'_token', value:'{{ csrf_token() }}' }))
     .append($('<input>', { type:'hidden', name:'guardian_ids', value: JSON.stringify(guardian_ids) }))
     .appendTo('body').submit();
-
-    // const guardian_ids = $('#dueTable tbody tr').map(function() {
-    //     return $(this).find('td').eq(0).text();
-    // }).get();
-
-    // $.post('{{ route("students.sendFilteredWhatsapp") }}', {
-    //     guardian_ids,
-    //     _token: '{{ csrf_token() }}'
-    // }, res => alert(res.msg || 'Done'));
 });
 
 $('#printSlips').click(() => {
-    const guardian_ids = $('#dueTable tbody tr').map(function() {
-        return $(this).find('td').eq(0).text();
+
+    const guardian_ids = $('.selectRow:checked').map(function() {
+        return $(this).val();
     }).get();
+
+    if (guardian_ids.length === 0) {
+        alert("Please select at least one guardian");
+        return;
+    }
 
     $('<form>', {
         action: '{{ route("students.printFilteredDueSlips") }}',

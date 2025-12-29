@@ -319,6 +319,7 @@ class ExamController extends Controller
             $classSectionWiseStatus = []; // Initialize here to accumulate all data for the current exam
 
             foreach ($row->class->section as $section) {
+                // dd($section);
                 $sectionId = $section->id;
                 $subjectWiseStatus = [];
                 $processedSubjects = [];
@@ -334,7 +335,9 @@ class ExamController extends Controller
                             continue;
                         }
 
-                        $marks = $timetable->exam_marks->where('user.student.class_section_id', $sectionId);
+                        // $marks = $timetable->exam_marks->where('user.student.class_section_id', $sectionId);
+                        $marks = $timetable->exam_marks->where('class_subject_id', $subjectId)->where('grade', '!=', null);
+                        // dd($marks);
                         $marksSubmitted = $marks->isNotEmpty();
                         $status = $marksSubmitted ? 'Submitted' : 'Pending';
 
@@ -347,7 +350,7 @@ class ExamController extends Controller
 
                         $processedSubjects[$subjectId] = true;
                     }
-
+                    // dd($subjectWiseStatus);
                     $classSectionStatus = count($subjectWiseStatus) > 0
                     ? (collect($subjectWiseStatus)->contains('status', 'Pending') ? 'Pending' : 'Submitted')
                     : 'Pending';
@@ -779,6 +782,121 @@ class ExamController extends Controller
     }
 
     // -----------------------------------------------------------------------------------------------------
+    public function publishExamResultByName(Request $request)
+    {
+        $exams = $this->exam->builder()
+            ->where('name', $request->exam_name)
+            ->whereIn('class_id', $request->class_id)
+            ->where('session_year_id', $request->session_year_id)
+            ->get();
+
+        if ($exams->isEmpty()) {
+            ResponseService::errorResponse("No exams found matching the filter.");
+        }
+
+        $errors = [];
+
+        foreach ($exams as $exam) {
+            $result = $this->processExamPublish($exam->id);
+
+            if ($result !== true) {
+                $errors[] = "Exam ID {$exam->id}: " . $result;
+            }
+        }
+
+        if (empty($errors)) {
+            ResponseService::successResponse("All exams processed successfully!");
+        } else {
+            ResponseService::warningResponse("Some exams could not be processed:\n" . implode("\n", $errors));
+        }
+    }
+
+    // public function publishExamResult($id)
+    // {
+    //     $result = $this->processExamPublish($id);
+
+    //     if ($result === true) {
+    //         ResponseService::successResponse('Data Stored Successfully');
+    //     } else {
+    //         ResponseService::errorResponse($result);
+    //     }
+    // }
+
+    private function processExamPublish($id)
+    {
+        try {
+            // Get The Exam Data with Marks and Timetable
+            $exam = $this->exam->builder()->with(['marks' => function ($query) {
+                $query->with('user:id,first_name,last_name,image', 'user.student:id,user_id,class_section_id')
+                    ->selectRaw('SUM(obtained_marks) as total_obtained_marks, student_id')
+                    ->selectRaw('SUM(total_marks) as total_marks')
+                    ->groupBy('student_id');
+            }, 'timetable:id,exam_id,start_time,end_time'])
+            ->with(['timetable' => function ($q) {
+                $q->with('exam_marks');
+            }])->findOrFail($id);
+
+            // Check if all subjects submitted
+            foreach ($exam->timetable as $timetable) {
+                if ($timetable->exam_marks->isEmpty()) {
+                    return "Marks are not uploaded yet for Exam ID: $id.";
+                }
+            }
+
+            DB::beginTransaction();
+
+            if ($exam->exam_status == 2 && $exam->marks->isNotEmpty()) {
+
+                // PUBLISH
+                if ($exam->publish == 0) {
+
+                    $examResult = $exam->marks->map(function ($examMarks) use ($exam, $id) {
+                        $percentage = ($examMarks['total_obtained_marks'] * 100) / $examMarks['total_marks'];
+                        $grade = findExamGrade($percentage);
+                        if ($grade === null) return "Grade data missing.";
+
+                        $status = $this->resultStatus($id, $examMarks['student_id']);
+
+                        return [
+                            'exam_id'          => $exam->id,
+                            'class_section_id' => $examMarks['user']['student']['class_section_id'],
+                            'student_id'       => $examMarks['student_id'],
+                            'total_marks'      => $examMarks['total_marks'],
+                            'obtained_marks'   => $examMarks['total_obtained_marks'],
+                            'percentage'       => round($percentage, 2),
+                            'grade'            => $grade,
+                            'status'           => $status,
+                            'session_year_id'  => $exam->session_year_id
+                        ];
+                    });
+
+                    $studentIds = $examResult->pluck('student_id')->toArray();
+                    $guardian_id = $this->student->builder()->with('user')->whereIn('user_id', $studentIds)->pluck('guardian_id')->toArray();
+
+                    $this->examResult->createBulk($examResult->toArray());
+                    $this->exam->update($id, ['publish' => 1]);
+
+                    $user = array_merge($studentIds, $guardian_id);
+                    send_notification($user, 'Result Published', 'Check your exam results', 'exam result');
+
+                }
+                // UNPUBLISH
+                else {
+                    ExamResult::where('exam_id', $id)->delete();
+                    $this->exam->update($id, ['publish' => 0]);
+                }
+
+                DB::commit();
+                return true;
+            } else {
+                return "Exam not completed yet for Exam ID: $id.";
+            }
+
+        } catch (Throwable $e) {
+            DB::rollBack();
+            return $e->getMessage();
+        }
+    }
 
     public function publishExamResult($id)
     {
@@ -1054,7 +1172,7 @@ class ExamController extends Controller
 
             // Filter the collection based on student ID
             $result = $results->where('student_id', $student_id)->first();
-
+            // dd($result->user->exam_marks[0]->class_subject->type);
             if (!$result) {
                 return redirect()->back()->with('error', trans('no_records_found'));
             }
@@ -1065,7 +1183,18 @@ class ExamController extends Controller
             $data = explode("storage/", $settings['horizontal_logo'] ?? '');
             $settings['horizontal_logo'] = end($data);
 
-            $pdf = PDF::loadView('exams.exam_result_pdf', compact('result', 'settings', 'grades'));
+            if($result->exam->name == 'Term I Exam'){
+
+                $exam_id = $this->exam->builder()->where('name','Unit Test I')->where('class_id',$result->class_section->class_id)->where('session_year_id',$result->session_year_id)->value('id');
+                $result2 = $this->getResult($student_id, $exam_id);
+
+                $exam_id = $this->exam->builder()->where('name','Unit Test II')->where('class_id',$result->class_section->class_id)->where('session_year_id',$result->session_year_id)->value('id');
+                $result3 = $this->getResult($student_id, $exam_id);
+                // dd($result3);
+                $pdf = PDF::loadView('exams.exam_result_pdf_term', compact('result', 'result2', 'result3', 'settings', 'grades'));
+            }else{
+                $pdf = PDF::loadView('exams.exam_result_pdf', compact('result', 'settings', 'grades'));
+            }
 
 
             return $pdf->stream();
@@ -1075,6 +1204,67 @@ class ExamController extends Controller
             ResponseService::logErrorResponse($e);
             ResponseService::errorResponse();
         }
+    }
+
+    public function getResult($student_id, $exam_id){
+
+        $results = $this->examResult->builder()
+            ->with([
+                'exam',
+                'session_year',
+                'user' => function($q) use($exam_id) {
+                    $q->with([
+                        'student' => function($q) {
+                            $q->with([
+                                'guardian',
+                                'class_section.class.stream',
+                                'class_section.section',
+                                'class_section.medium'
+                            ]);
+                        },
+                        'exam_marks' => function($q) use($exam_id) {
+                            $q->whereHas('timetable', function($q) use($exam_id) {
+                                $q->where('exam_id', $exam_id);
+                            })
+                            ->with([
+                                'class_subject' => function($q) {
+                                    $q->withTrashed()->with('subject:id,name,type');
+                                },
+                                'timetable'
+                            ]);
+                        }
+                    ]);
+                }
+            ])
+            ->where('exam_id', $exam_id)
+            ->select('exam_results.*')
+            ->get();
+
+            // Convert the results to a collection
+        $results = collect($results);
+
+        // Add rank calculation to each item in the collection
+        $results = $results->map(function($result) {
+            $rank = DB::table('exam_results as er2')
+                ->where('er2.class_section_id', $result->class_section_id)
+                ->where('er2.obtained_marks', '>', $result->obtained_marks)
+                ->where('er2.exam_id', $result->exam_id)
+                ->where('er2.status', 1)
+                ->distinct('er2.obtained_marks')
+                ->count() + 1;
+
+            $result->rank = $rank;
+            return $result;
+        });
+
+        // Filter the collection based on student ID
+        $result = $results->where('student_id', $student_id)->first();
+        // dd($result->user->exam_marks[0]->class_subject->type);
+        if (!$result) {
+            return redirect()->back()->with('error', trans('no_records_found'));
+        }
+
+        return $result;
     }
 
     // public function examResultPdf($student_id, $exam_id)
@@ -1216,7 +1406,15 @@ class ExamController extends Controller
         //     }]);
         // }])->where('publish', 0)->get();
 
-        return response(view('exams.bulk_upload_marks'));
+        $exams = Exam::where('publish', 0)
+            ->pluck('name')
+            ->unique()
+            ->values();
+        $classes = $this->class->all(['*'], ['stream', 'medium', 'stream']);
+        $subjects = $this->subject->builder()->orderBy('id', 'DESC')->get();
+        $session_year_all = $this->sessionYear->all();
+
+        return response(view('exams.bulk_upload_marks', compact('classes', 'subjects', 'session_year_all', 'exams')));
     }
 
     public function downloadSampleFile(Request $request) {

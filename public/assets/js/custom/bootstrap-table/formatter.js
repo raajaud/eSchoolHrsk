@@ -421,9 +421,10 @@ function feesTransactionParentGateway(value, row) {
     } else if (row.payment_gateway == 'Flutterwave') {
         return "<span class='badge badge-dark'>"+window.trans['Flutterwave']+"</span>";
     } else {
-        return "-";
+        return "<span class='badge badge-primary'>"+row.payment_gateway+"</span>";
     }
 }
+
 
 function subscriptionTransactionParentGateway(value, row) {
     if (row.payment_gateway == "Stripe") {

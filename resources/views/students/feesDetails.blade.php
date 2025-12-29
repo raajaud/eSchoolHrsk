@@ -6,6 +6,10 @@
 <div class="content-wrapper">
     <div class="page-header">
         <h3 class="page-title">Fees Due Management</h3>
+        <div class="mr-1">
+            <a href="{{ route('fees_monthly') }}" class="btn btn-theme">Monthly Fees</a>
+            <a href="{{ route('charges_monthly') }}" class="btn btn-theme">Fees Details</a>
+        </div>
     </div>
 
     <div class="card">
@@ -30,9 +34,11 @@
             </div>
             <div id="stats" class="alert alert-" style="display:none; border: 1px solid black;"></div>
 
-            <table class="table table-bordered" id="dueTable">
+            <table class="table table-bordered table-striped" id="dueTable">
                 <thead>
                     <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>SL No</th>
                         <th>Id</th>
                         <th>Guardian</th>
                         <th>Mobile</th>

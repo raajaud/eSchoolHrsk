@@ -79,7 +79,7 @@ class ExamTimetable extends Model {
     public function getSubjectWithNameAttribute() {
         if ($this->relationLoaded('class_subject')) {
             if ($this->class_subject) {
-                return $this->class_subject->subject->name . ' - ' . $this->class_subject->subject->type;    
+                return $this->class_subject->subject->name . ' - ' . $this->class_subject->subject->type;
             }
         }
         return null;

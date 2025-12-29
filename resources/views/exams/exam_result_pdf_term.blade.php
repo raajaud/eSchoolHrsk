@@ -166,96 +166,98 @@
                 </tr>
             </table>
         </div> --}}
+        @php
+        // Prepare subjects
+        $subjects = [];
 
+        // Helper to push exam marks
+        $pushMarks = function($resultObj, $examLabel) use (&$subjects) {
+            if (!$resultObj) return;
+
+            foreach ($resultObj->user->exam_marks as $m) {
+                $sub = $m->class_subject->subject->name;
+
+                if (!isset($subjects[$sub])) {
+                    $subjects[$sub] = [
+                        'Unit Test I' => ['total' => '-', 'obtain' => '-'],
+                        'Unit Test II' => ['total' => '-', 'obtain' => '-'],
+                        'Term I Exam' => ['total' => '-', 'obtain' => '-'],
+                    ];
+                }
+
+                $subjects[$sub][$examLabel] = [
+                    'total' => $m->timetable->total_marks,
+                    'obtain' => $m->obtained_marks
+                ];
+            }
+        };
+
+        // Merge marks into one array
+        $pushMarks($result2, 'Unit Test I');
+        $pushMarks($result3, 'Unit Test II');
+        $pushMarks($result,  'Term I Exam');
+        @endphp
         <div class="table-result table-gap">
-            {{-- Scholastic Areas --}}
             <table class="full-width cell-pedding">
+
                 <tr>
-                    <td colspan="5" class="text-center" style="font-size: 15px; letter-spacing: 1px">
-                        Scholastic Areas
-                    </td>
+                    <th colspan="2" class="text-center" style="font-size: 15px;">Scholastic Areas</th>
+                    <th colspan="3">Full Marks</th>
+                    <th colspan="5">Obtain Marks</th>
+
                 </tr>
+
                 <tr>
-                    <th>SR No.</th>
+                    <th>SR</th>
                     <th>Subject</th>
-                    <th>Total Marks</th>
-                    <th>Obtain Marks</th>
+                    <th>Unit I</th>
+                    <th>Unit II</th>
+                    <th>Term I</th>
+
+                    <th>Unit I</th>
+                    <th>Unit II</th>
+                    <th>Term I</th>
+
+                    <th>Total</th>
                     <th>Grade</th>
                 </tr>
-                @php
-                    $scholastic = ['English Writing', 'Hindi Writing', 'Urdu Writing', 'English', 'Hindi', 'Urdu', 'Bangla', 'Mathematics', 'Science', 'Social Science'];
-                    $sIndex = 1;
 
-                    $hindi = $result->user->exam_marks->firstWhere('class_subject.subject.name', 'Hindi');
-                    $urdu = $result->user->exam_marks->firstWhere('class_subject.subject.name', 'Urdu');
-                    $hindi_urdu_total = 0;
-                    $hindi_urdu_obtained = 0;
-                    $hindi_urdu_grade = null;
-                @endphp
-                @foreach ($result->user->exam_marks as $mark)
-                    @if (in_array($mark->class_subject->subject->name, $scholastic))
-                        @if (in_array($mark->class_subject->subject->name, ['Hindi', 'Urdu']))
-                            @php
-                                $hindi_urdu_total += $mark->timetable->total_marks;
-                                $hindi_urdu_obtained += $mark->obtained_marks;
-                            @endphp
-                        @elseif(!in_array($mark->class_subject->subject->name, ['Hindi', 'Urdu']))
-                            <tr>
-                                <td class="text-center">{{ $sIndex++ }}</td>
-                                <td>{{ $mark->class_subject->subject->name }}</td>
-                                <td class="text-center">{{ $mark->timetable->total_marks }}</td>
-                                <td class="text-center">{{ $mark->obtained_marks }}</td>
-                                <td class="text-center">{{ $mark->grade }}</td>
-                            </tr>
-                        @endif
-                    @endif
-                @endforeach
-                @php
-                    $percentage = ($hindi_urdu_obtained / $hindi_urdu_total) * 100;
-                    if ($percentage >= 90) $grade = 'A1';
-                    elseif ($percentage >= 80) $grade = 'A2';
-                    elseif ($percentage >= 70) $grade = 'B1';
-                    elseif ($percentage >= 60) $grade = 'B2';
-                    elseif ($percentage >= 50) $grade = 'C1';
-                    elseif ($percentage >= 40) $grade = 'C2';
-                    else $grade = 'D';
-                @endphp
-                <tr>
-                    <td class="text-center">{{ $sIndex++ }}</td>
-                    <td>Hindi / Urdu</td>
-                    <td class="text-center">{{ $hindi_urdu_total }}</td>
-                    <td class="text-center">{{ $hindi_urdu_obtained }}</td>
-                    <td class="text-center">{{ $grade }}</td>
-                </tr>
+                @php $sr = 1; @endphp
+                @foreach($subjects as $subject => $exams)
+                    @php
+                        $termTotal = $exams['Term I Exam']['total'] != '-' ? $exams['Term I Exam']['total'] : 0;
+                        $termOb    = $exams['Term I Exam']['obtain'] != '-' ? $exams['Term I Exam']['obtain'] : 0;
 
-                <tr>
-                    <td colspan="5" class="text-center" style="font-size: 15px; letter-spacing: 1px">
-                        Co-Scholastic Areas
-                    </td>
-                </tr>
+                        $p = ($termTotal > 0) ? ($termOb / $termTotal) * 100 : 0;
 
-                @php
-                    $coscholastic = ['Drawing', 'Conversation', 'GK', 'Computer', 'EVS'];
-                    $cIndex = 1;
-                @endphp
-                @foreach ($result->user->exam_marks as $mark)
-                    @if (in_array($mark->class_subject->subject->name, $coscholastic))
-                        <tr>
-                            <td class="text-center">{{ $cIndex++ }}</td>
-                            <td>{{ $mark->class_subject->subject->name }}</td>
-                            <td class="text-center">{{ $mark->timetable->total_marks }}</td>
-                            <td class="text-center">{{ $mark->obtained_marks }}</td>
-                            <td class="text-center">{{ $mark->grade }}</td>
-                        </tr>
-                    @endif
+                        if ($p >= 90) $grade = 'A1';
+                        elseif ($p >= 80) $grade = 'A2';
+                        elseif ($p >= 70) $grade = 'B1';
+                        elseif ($p >= 60) $grade = 'B2';
+                        elseif ($p >= 50) $grade = 'C1';
+                        elseif ($p >= 40) $grade = 'C2';
+                        else $grade = 'D';
+                    @endphp
+
+                    <tr>
+                        <td class="text-center">{{ $sr++ }}</td>
+                        <td>{{ $subject }}</td>
+
+                        <td class="text-center">{{ $exams['Unit Test I']['total'] }}</td>
+                        <td class="text-center">{{ $exams['Unit Test II']['total'] }}</td>
+                        <td class="text-center">{{ $exams['Term I Exam']['total'] }}</td>
+
+                        <td class="text-center">{{ $exams['Unit Test I']['obtain'] }}</td>
+                        <td class="text-center">{{ $exams['Unit Test II']['obtain'] }}</td>
+                        <td class="text-center">{{ $exams['Term I Exam']['obtain'] }}</td>
+                        @php
+                            $total = $exams['Unit Test I']['obtain'] + $exams['Unit Test II']['obtain'] + $exams['Term I Exam']['obtain'];
+                        @endphp
+                        <td class="text-center">{{ $total }}</td>
+                        <td class="text-center">{{ $grade }}</td>
+                    </tr>
                 @endforeach
 
-                <tr>
-                    <th colspan="2">Total</th>
-                    <th>{{ $result->total_marks }}</th>
-                    <th>{{ $result->obtained_marks }}</th>
-                    <th>{{ $result->grade }}</th>
-                </tr>
             </table>
         </div>
 

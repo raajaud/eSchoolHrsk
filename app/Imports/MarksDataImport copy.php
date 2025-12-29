@@ -144,7 +144,6 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                     ->where('class_id', $classIds->id)
                     ->first();
                 // dd($examByClass);
-
                 // Get all class_subjects for this subject in given classes
                 $subjectNamess = [];
                 $classSubjects = ClassSubject::whereIn('class_id', $classIds)->get();
@@ -170,29 +169,6 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                     $admissionDate = \Carbon\Carbon::parse($student->student->admission_date);
                     $examDate = \Carbon\Carbon::parse($exam_timetable->date);
 
-                    // dd($row['exam']);
-                    $unitTestMarksTotal = 0;
-                    if($row['exam'] == 'Term I Exam'){
-                        $marks1 = ExamMarks::with(['timetable.exam', 'subject']) // load exam name + subject
-                            ->where('student_id', $student->id)
-                            ->where('class_subject_id', $classSubject->id)
-                            ->whereHas('timetable.exam', function ($q) {
-                                $q->where('name', 'Unit Test I');
-                            })
-                            ->first();
-
-                        $marks2 = ExamMarks::with(['timetable.exam', 'subject']) // load exam name + subject
-                            ->where('student_id', $student->id)
-                            ->where('class_subject_id', $classSubject->id)
-                            ->whereHas('timetable.exam', function ($q) {
-                                $q->where('name', 'Unit Test II');
-                            })
-                            ->first();
-                        $unitTest1Marks = $marks1 ? $marks1->obtained_marks : 0;
-                        $unitTest2Marks = $marks2 ? $marks2->obtained_marks : 0;
-                        $unitTestMarksTotal = $unitTest1Marks + $unitTest2Marks;
-                        // dd($unitTestMarksTotal);
-                    }
                     if ($admissionDate->gt($examDate)) {
                         $obtainedMarks = 0;
                         $status = 2;
@@ -233,7 +209,6 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                         $examGrade = ($obtainedMarks >= 0) ? findExamGrade($marksPercentage) : null;
                     } elseif (is_numeric($marksRaw)) {
                         $obtainedMarks = floatval($marksRaw);
-                        $obtainedMarks = $obtainedMarks + $unitTestMarksTotal;
 
                         $status = ($obtainedMarks >= $passingMarks) ? 1 : 0;
                         if ($obtainedMarks < 0) $status = 0;

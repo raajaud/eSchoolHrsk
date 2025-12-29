@@ -81,6 +81,9 @@
                 $previousMonth = now()->subMonth()->format('F-Y');
                 $tuition = (int) $guardian->monthly_due;
                 $back_dues = (int) ($guardian->total_fees - ($guardian->total_paid + $guardian->monthly_due));
+                if($back_dues < 0) {
+                    $back_dues = 0;
+                }
                 $total_dues = (int) ($guardian->total_fees - $guardian->total_paid);
             @endphp
 

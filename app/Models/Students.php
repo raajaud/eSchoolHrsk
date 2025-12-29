@@ -224,4 +224,13 @@ class Students extends Model {
         return $this->hasMany(Point::class, 'child_id', 'user_id')->orderByDesc('created_at');
     }
 
+    public function getTotalPointsAttribute()
+    {
+        return $this->points()->sum('points');
+    }
+
+    public function points() {
+        return $this->hasMany(Point::class, 'child_id', 'user_id')
+                    ->orderByDesc('created_at');
+    }
 }
