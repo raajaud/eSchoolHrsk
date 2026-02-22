@@ -96,96 +96,303 @@ class StudentController extends Controller {
             $extraFields = $this->formFields->defaultModel()->orderBy('rank')->get();
         }
 
+        // dd(send_whatsapp_notification(
+        //     '9876543210',
+        //     "📢 School will remain closed tomorrow."
+        // ));
+
         $sessionYears = $this->sessionYear->all();
         $features = FeaturesService::getFeatures();
         return view('students.create', compact('class_sections', 'admission_no', 'extraFields', 'sessionYears', 'features'));
     }
 
-    public function store(Request $request) {
+    // public function store(Request $request) {
+    //     ResponseService::noPermissionThenRedirect(['student-create']);
+    //     $request->validate([
+    //         'first_name'          => 'nullable',
+    //         'last_name'           => 'nullable',
+    //         'mobile'              => 'nullable|regex:/^([0-9\s\-\+\(\)]*)$/',
+    //         'image'               => 'nullable|mimes:jpeg,png,jpg,svg|image|max:2048',
+    //         'dob'                 => 'nullable',
+    //         'class_section_id'    => 'nullable|numeric',
+    //         /*NOTE : Unique constraint is used because it's not school specific*/
+    //         'admission_no'        => 'nullable|unique:users,email',
+    //         'admission_date'      => 'nullable',
+    //         'session_year_id'     => 'nullable|numeric',
+    //         'guardian_email'      => 'nullable|email',
+    //         'guardian_first_name' => 'nullable|string',
+    //         'guardian_last_name'  => 'nullable|string',
+    //         'guardian_mobile'     => 'nullable|numeric',
+    //         'guardian_gender'     => 'nullable|in:male,female',
+    //         'guardian_image'      => 'nullable|mimes:jpg,jpeg,png|max:4096',
+    //         'status'              => 'nullable|in:0,1',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // Check free trial package
+    //         $today_date = Carbon::now()->format('Y-m-d');
+    //         $subscription = $this->subscription->builder()->doesntHave('subscription_bill')->whereDate('start_date', '<=', $today_date)->where('end_date', '>=', $today_date)->whereHas('package', function ($q) {
+    //             $q->where('is_trial', 1);
+    //         })->first();
+
+    //         // If free trail package
+    //         if ($subscription) {
+    //             $systemSettings = $this->cache->getSystemSettings();
+    //             $student = $this->user->builder()->role('Student')->withTrashed()->count();
+    //             if ($student >= $systemSettings['student_limit']) {
+    //                 $message = "The free trial allows only " . $systemSettings['student_limit'] . " students.";
+    //                 ResponseService::errorResponse($message);
+    //             }
+    //         } else {
+    //             // Regular package? Check Postpaid or Prepaid
+    //             $subscription = $this->subscriptionService->active_subscription(Auth::user()->school_id);
+    //             // If prepaid plan check student limit
+    //             if ($subscription && $subscription->package_type == 0) {
+    //                 $status = $this->subscriptionService->check_user_limit($subscription, "Students");
+
+    //                 if (!$status) {
+    //                     ResponseService::errorResponse('You reach out limits');
+    //                 }
+    //             }
+    //         }
+
+    //         // Get the user details from the guardian details & identify whether that user is guardian or not. if not the guardian and has some other role then show appropriate message in response
+    //         $guardianUser = $this->user->builder()->whereHas('roles', function ($q) {
+    //             $q->where('name', '!=', 'Guardian');
+    //         })->where('email', $request->guardian_email)->withTrashed()->first();
+    //         if ($guardianUser) {
+    //             ResponseService::errorResponse("Email ID is already taken for Other Role");
+    //         }
+    //         $userService = app(UserService::class);
+    //         $sessionYear = $this->sessionYear->findById($request->session_year_id);
+    //         $guardian = $userService->createOrUpdateParent($request->guardian_first_name, $request->guardian_last_name, $request->guardian_email, $request->guardian_mobile, $request->guardian_gender, $request->guardian_image);
+    //         $is_send_notification = true;
+    //         $userService->createStudentUser($request->first_name, $request->last_name, $request->admission_no, $request->mobile, $request->dob, $request->gender, $request->image, $request->class_section_id, $request->admission_date, $request->current_address, $request->permanent_address, $sessionYear->id, $guardian->id, $request->extra_fields ?? [], $request->status ?? 0, $is_send_notification);
+
+    //         DB::commit();
+    //         ResponseService::successResponse('Data Stored Successfully');
+    //     } catch (Throwable $e) {
+    //         // IF Exception is TypeError and message contains Mail keywords then email is not sent successfully
+    //         if ($e instanceof TypeError && Str::contains($e->getMessage(), [
+    //                 'Failed',
+    //                 'Mail',
+    //                 'Mailer',
+    //                 'MailManager'
+    //             ])) {
+    //             DB::commit();
+    //             ResponseService::warningResponse("Student Registered successfully. But Email not sent.");
+    //         } else {
+    //             DB::rollBack();
+    //             ResponseService::logErrorResponse($e, "Student Controller -> Store method");
+    //             ResponseService::errorResponse();
+    //         }
+
+    //     }
+    // }
+
+
+    // public function store(Request $request)
+    // {
+    //     ResponseService::noPermissionThenRedirect(['student-create']);
+
+    //     $validator = Validator::make($request->all(), [
+    //         'first_name'        => 'required|string',
+    //         'gender'            => 'required|in:male,female',
+    //         'admission_date'    => 'required|date',
+    //         'dob'               => 'required|date',
+    //         'class_section_id'  => 'required|integer',
+    //         'session_year_id'   => 'required|integer',
+    //         'monthly_fees'      => 'required|numeric',
+    //         'current_address'   => 'required|string',
+
+    //         'guardian_first_name' => 'required|string',
+    //         'guardian_mobile'     => 'required|digits_between:8,15',
+    //         'guardian_gender'     => 'required|in:male,female',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => false,
+    //             'errors' => $validator->errors()
+    //         ], 422);
+    //     }
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $userService = app(UserService::class);
+
+    //         /** SESSION YEAR */
+    //         $sessionYear = $this->sessionYear->builder()
+    //             ->where('default', 1)
+    //             ->firstOrFail();
+
+    //         /** CLASS → CLASS SECTION */
+    //         $classSectionID = $request->class_section_id;
+
+    //         /** ADMISSION NO (same as import) */
+    //         $lastStudentId = $this->user->builder()
+    //             ->role('Student')
+    //             ->latest('id')
+    //             ->value('id') ?? 0;
+
+    //         $admission_no = $sessionYear->name . '0' . Auth::user()->school_id . '0' . ($lastStudentId + 1);
+
+    //         $fullName = $request->guardian_first_name;
+    //         $nameParts = explode(' ', $fullName);
+    //         $first_names = array_pop($nameParts);
+    //         $last_names = implode(' ', $nameParts);
+
+    //         $guardian = $userService->createOrUpdateParent($last_names, $first_names, '', $request->guardian_mobile, $request->guardian_gender);
+
+
+    //         $fullName = $request->first_name;
+    //         $nameParts = explode(' ', $fullName);
+    //         $last_name = array_pop($nameParts);
+    //         $first_name = implode(' ', $nameParts);
+
+    //         $user = $userService->createStudentUser($first_name, $last_name, $admission_no, $request->guardian_mobile, $request->dob, $request->gender, null, $classSectionID, $request->admission_date,$request->current_address,$request->current_address, $sessionYear->id, $guardian->id, [], 1, 1, $request->monthly_fees);
+
+    //         DB::commit();
+
+
+    //     } catch (\Throwable $e) {
+    //         DB::rollBack();
+    //         ResponseService::logErrorResponse($e, 'Student Store');
+
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Unable to save student'
+    //         ], 500);
+    //     }
+
+    //     $whatsappFailed = false;
+
+    //     try {
+    //         send_whatsapp_notification(
+    //             $guardian->mobile,
+    //             "Admission Approved!\n\nDear {$guardian->full_name},\n\nYour child {$user->full_name} {$user->last_name} has been successfully admitted.\n\nAdmission No: {$guardian->mobile}\nPassword: {$guardian->mobile}\n\nThank you,\n" .
+    //             (app(CachingService::class)->getSchoolSettings('school_name') ?? 'School Administration')
+    //         );
+    //     } catch (\Throwable $e) {
+    //         $whatsappFailed = true;
+
+    //         \Log::error('WhatsApp failed', [
+    //             'mobile' => $guardian->mobile,
+    //             'error'  => $e->getMessage()
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'status'  => true,
+    //         'message' => $whatsappFailed
+    //             ? 'Student added successfully, but WhatsApp notification could not be sent.'
+    //             : 'Student added successfully and notification sent.'
+    //     ]);
+    // }
+
+    public function store(Request $request)
+    {
         ResponseService::noPermissionThenRedirect(['student-create']);
-        $request->validate([
-            'first_name'          => 'nullable',
-            'last_name'           => 'nullable',
-            'mobile'              => 'nullable|regex:/^([0-9\s\-\+\(\)]*)$/',
-            'image'               => 'nullable|mimes:jpeg,png,jpg,svg|image|max:2048',
-            'dob'                 => 'nullable',
-            'class_section_id'    => 'nullable|numeric',
-            /*NOTE : Unique constraint is used because it's not school specific*/
-            'admission_no'        => 'nullable|unique:users,email',
-            'admission_date'      => 'nullable',
-            'session_year_id'     => 'nullable|numeric',
-            'guardian_email'      => 'nullable|email',
-            'guardian_first_name' => 'nullable|string',
-            'guardian_last_name'  => 'nullable|string',
-            'guardian_mobile'     => 'nullable|numeric',
-            'guardian_gender'     => 'nullable|in:male,female',
-            'guardian_image'      => 'nullable|mimes:jpg,jpeg,png|max:4096',
-            'status'              => 'nullable|in:0,1',
+
+        $validator = Validator::make($request->all(), [
+            'first_name'        => 'required|string',
+            'gender'            => 'required|in:male,female',
+            'admission_date'    => 'required|date',
+            'dob'               => 'required|date',
+            'class_section_id'  => 'required|integer',
+            'session_year_id'   => 'required|integer',
+            'monthly_fees'      => 'required|numeric',
+            'current_address'   => 'required|string',
+
+            'guardian_first_name' => 'required|string',
+            'guardian_mobile'     => 'required|digits_between:8,15',
+            'guardian_gender'     => 'required|in:male,female',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
         try {
             DB::beginTransaction();
 
-            // Check free trial package
-            $today_date = Carbon::now()->format('Y-m-d');
-            $subscription = $this->subscription->builder()->doesntHave('subscription_bill')->whereDate('start_date', '<=', $today_date)->where('end_date', '>=', $today_date)->whereHas('package', function ($q) {
-                $q->where('is_trial', 1);
-            })->first();
-
-            // If free trail package
-            if ($subscription) {
-                $systemSettings = $this->cache->getSystemSettings();
-                $student = $this->user->builder()->role('Student')->withTrashed()->count();
-                if ($student >= $systemSettings['student_limit']) {
-                    $message = "The free trial allows only " . $systemSettings['student_limit'] . " students.";
-                    ResponseService::errorResponse($message);
-                }
-            } else {
-                // Regular package? Check Postpaid or Prepaid
-                $subscription = $this->subscriptionService->active_subscription(Auth::user()->school_id);
-                // If prepaid plan check student limit
-                if ($subscription && $subscription->package_type == 0) {
-                    $status = $this->subscriptionService->check_user_limit($subscription, "Students");
-
-                    if (!$status) {
-                        ResponseService::errorResponse('You reach out limits');
-                    }
-                }
-            }
-
-            // Get the user details from the guardian details & identify whether that user is guardian or not. if not the guardian and has some other role then show appropriate message in response
-            $guardianUser = $this->user->builder()->whereHas('roles', function ($q) {
-                $q->where('name', '!=', 'Guardian');
-            })->where('email', $request->guardian_email)->withTrashed()->first();
-            if ($guardianUser) {
-                ResponseService::errorResponse("Email ID is already taken for Other Role");
-            }
             $userService = app(UserService::class);
-            $sessionYear = $this->sessionYear->findById($request->session_year_id);
-            $guardian = $userService->createOrUpdateParent($request->guardian_first_name, $request->guardian_last_name, $request->guardian_email, $request->guardian_mobile, $request->guardian_gender, $request->guardian_image);
-            $is_send_notification = true;
-            $userService->createStudentUser($request->first_name, $request->last_name, $request->admission_no, $request->mobile, $request->dob, $request->gender, $request->image, $request->class_section_id, $request->admission_date, $request->current_address, $request->permanent_address, $sessionYear->id, $guardian->id, $request->extra_fields ?? [], $request->status ?? 0, $is_send_notification);
+
+            /** SESSION YEAR */
+            $sessionYear = $this->sessionYear->builder()
+                ->where('default', 1)
+                ->firstOrFail();
+
+            /** CLASS → CLASS SECTION */
+            $classSectionID = $request->class_section_id;
+
+            /** ADMISSION NO (same as import) */
+            $lastStudentId = $this->user->builder()
+                ->role('Student')
+                ->latest('id')
+                ->value('id') ?? 0;
+
+            $admission_no = $sessionYear->name . '0' . Auth::user()->school_id . '0' . ($lastStudentId + 1);
+
+            $fullName = $request->guardian_first_name;
+            $nameParts = explode(' ', $fullName);
+            $first_names = array_pop($nameParts);
+            $last_names = implode(' ', $nameParts);
+
+            $guardian = $userService->createOrUpdateParent($last_names, $first_names, '', $request->guardian_mobile, $request->guardian_gender);
+
+
+            $fullName = $request->first_name;
+            $nameParts = explode(' ', $fullName);
+            $last_name = array_pop($nameParts);
+            $first_name = implode(' ', $nameParts);
+
+            $user = $userService->createStudentUser($first_name, $last_name, $admission_no, $request->guardian_mobile, $request->dob, $request->gender, null, $classSectionID, $request->admission_date,$request->current_address,$request->current_address, $sessionYear->id, $guardian->id, [], 1, 1, $request->monthly_fees);
 
             DB::commit();
-            ResponseService::successResponse('Data Stored Successfully');
-        } catch (Throwable $e) {
-            // IF Exception is TypeError and message contains Mail keywords then email is not sent successfully
-            if ($e instanceof TypeError && Str::contains($e->getMessage(), [
-                    'Failed',
-                    'Mail',
-                    'Mailer',
-                    'MailManager'
-                ])) {
-                DB::commit();
-                ResponseService::warningResponse("Student Registered successfully. But Email not sent.");
-            } else {
-                DB::rollBack();
-                ResponseService::logErrorResponse($e, "Student Controller -> Store method");
-                ResponseService::errorResponse();
-            }
 
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            ResponseService::logErrorResponse($e, 'Student Store');
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Unable to save student'
+            ], 500);
         }
+
+        $whatsappFailed = false;
+
+        try {
+            send_whatsapp_notification(
+                $guardian->mobile,
+                "Admission Approved!\n\nDear {$guardian->full_name},\n\nYour child {$user->full_name} {$user->last_name} has been successfully admitted.\n\nAdmission No: {$guardian->mobile}\nPassword: {$guardian->mobile}\n\nThank you,\n" .
+                (app(CachingService::class)->getSchoolSettings('school_name') ?? 'School Administration')
+            );
+        } catch (\Throwable $e) {
+            $whatsappFailed = true;
+
+            \Log::error('WhatsApp failed', [
+                'mobile' => $guardian->mobile,
+                'error'  => $e->getMessage()
+            ]);
+        }
+
+        return response()->json([
+            'status'  => true,
+            'message' => $whatsappFailed
+                ? 'Student added successfully, but WhatsApp notification could not be sent.'
+                : 'Student added successfully and notification sent.'
+        ]);
     }
+
 
     public function update($id, Request $request) {
         ResponseService::noAnyPermissionThenSendJson(['student-create', 'student-edit']);
@@ -1456,7 +1663,7 @@ class StudentController extends Controller {
                     }
 
                     $monthsDue = floor($g->total_dues / $g->monthly_fees);
-                    
+
                     return $monthsDue >= $minMonths;   // Filter by months due
                 });
             }
@@ -1583,7 +1790,7 @@ class StudentController extends Controller {
         ->orderBy('user_id')
         ->get();
 
-        
+
         $guardians = User::with(['child.user', 'child.class_section.class'])
                 ->whereHas('roles', fn($q) => $q->where('name', 'Guardian'))
                 ->whereHas('child')

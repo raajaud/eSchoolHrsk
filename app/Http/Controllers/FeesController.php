@@ -1104,6 +1104,8 @@ class FeesController extends Controller
         $charges = UserCharge::where('user_id', $guardian->id)->get();
         $totalCharges = $charges->sum('amount');
         // dd($guardian->child[0]->class_section->class->name);
+        // $logs = DB::table('whatsapp_logs')->latest('created_at')->limit(5)->get();
+        // dd($logs[4]);
         $currencySymbol = $this->cache->getSchoolSettings('currency_symbol');
         return view('fees.pay-compulsory', compact('guardian', 'logs', 'currencySymbol', 'totalPaid', 'totalCharges', 'charges'));
     }
@@ -1204,7 +1206,7 @@ class FeesController extends Controller
             if (!$number) {
                 throw new \Exception('Parent mobile number not found.');
             }
-            
+
             $data = [
                 'payment_id' => $payment_id,
                 'student'    => $student,
@@ -1244,7 +1246,7 @@ class FeesController extends Controller
             }
             if (!is_readable($pdfFile)) {
                 throw new \Exception("PDF not readable at {$pdfFile}");
-            }   
+            }
             // dd($pdfFile, file_exists($pdfFile), is_readable($pdfFile));
             $imagick = new \Imagick();
             $imagick->setResolution(500, 500);
@@ -1260,12 +1262,24 @@ class FeesController extends Controller
 
             // $number = '7488699325';
             // Send to WhatsApp bot
-            Http::post('http://127.0.0.1:3000/send-media', [
-                'number'     => '91' . $number,
-                'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
-                'file'       => asset("uploads/receipts/{$payment_id}.jpg") . '?v=' . time(),
-                'payment_id' => $payment_id,
-            ]);
+            // Http::post('http://127.0.0.1:3000/send-media', [
+            //     'number'     => '91' . $number,
+            //     'caption'    => "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
+            //     'file'       => asset("uploads/receipts/{$payment_id}.jpg") . '?v=' . time(),
+            //     'payment_id' => $payment_id,
+            // ]);
+
+
+
+            send_whatsapp_notification(
+                [$number],
+                "✅ Payment Successful!\n\nDear {$father}, we’ve received ₹{$formattedAmount}/- for {$student}.\n\nReceipt ID: {$payment_id}\nDate: {$today_date}",
+                asset("uploads/receipts/{$payment_id}.jpg"),
+                [
+                    'payment_id' => $payment_id
+                ]
+            );
+
 
             ResponseService::successResponse("Payment recorded and message sent successfully.");
         } catch (Throwable $e) {
@@ -1472,6 +1486,90 @@ class FeesController extends Controller
             DB::rollback();
             ResponseService::logErrorResponse($e, 'FeesController -> studentAccountDeactivate method ');
             ResponseService::errorResponse();
+        }
+    }
+
+
+    public function resendReceipt($payment_id)
+    {
+        try {
+            $transaction = PaymentTransaction::where('id', $payment_id)->firstOrFail();
+
+            $parent = User::with([
+                    'child.user',
+                    'child.class_section.class',
+                    'guardians'
+                ])
+                ->findOrFail($transaction->user_id);
+
+            $numbers = collect();
+
+            if (!empty($parent->mobile)) {
+                $numbers->push($parent->mobile);
+            }
+
+            foreach ($parent->guardians as $guardian) {
+                if (!empty($guardian->mobile)) {
+                    $numbers->push($guardian->mobile);
+                }
+            }
+
+            if ($numbers->isEmpty()) {
+                return ResponseService::errorResponse('No mobile numbers found.');
+            }
+
+            $student = '';
+            $class   = '';
+            $count   = $parent->child->count();
+
+            foreach ($parent->child as $key => $child) {
+                $student .= $child->user->full_name;
+                $class   .= $child->class_section->class->name ?? '-';
+
+                if ($count > 1 && $key < $count - 2) {
+                    $student .= ', ';
+                    $class   .= ', ';
+                } elseif ($count > 1 && $key == $count - 2) {
+                    $student .= ' & ';
+                    $class   .= ' & ';
+                }
+            }
+
+            $formattedAmount = number_format($transaction->amount, 0);
+            $receiptPath = asset("uploads/receipts/{$transaction->payment_id}.jpg") . '?v=' . time();
+
+
+            $message = "🧾 Payment Receipt!\n\n"
+                . "Dear {$parent->full_name}, here is your payment receipt.\n\n"
+                . "Student: {$student}\n"
+                . "Receipt ID: {$payment_id}\n"
+                . "Amount: ₹{$formattedAmount}/-\n"
+                . "Date: " . \Carbon\Carbon::parse($transaction->date)->format('d-m-Y');
+
+            // $numbers = collect();
+            // $numbers->push('7488699325');
+            // dd($numbers->toArray(), $message, $receiptPath);
+            send_whatsapp_notification(
+                $numbers->toArray(),
+                $message,
+                $receiptPath,
+                ['payment_id' => $payment_id]
+            );
+
+            // foreach ($numbers->unique() as $number) {
+            //     Http::post('http://127.0.0.1:3000/send-media', [
+            //         'number'     => '917488699325',
+            //         'caption'    => "🧾 Payment Receipt!\n\nDear {$parent->full_name}, here is your payment receipt.\n\nStudent: {$student}\nReceipt ID: {$payment_id}\nAmount: ₹{$formattedAmount}/-\nDate: " . \Carbon\Carbon::parse($transaction->date)->format('d-m-Y'),
+            //         'file'       => $receiptPath,
+            //         'payment_id' => $payment_id,
+            //     ]);
+            // }
+
+            ResponseService::successResponse('Receipt sent to parent and guardians successfully.');
+
+        } catch (\Throwable $e) {
+            ResponseService::logErrorResponse($e, 'FeesController -> resendReceipt');
+            ResponseService::errorResponse('Unable to resend receipt.');
         }
     }
 }

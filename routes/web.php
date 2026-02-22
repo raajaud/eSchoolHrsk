@@ -446,6 +446,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
 
 
         /*** Parents ***/
+        Route::post('/guardian/addNew', [GuardianController::class, 'addNew'])->name('guardian.addNew');
+        Route::post('guardian/update-more', [GuardianController::class, 'updateMore'])->name('guardian.updateMore');
         Route::get('/guardian/search', [GuardianController::class, 'search']);
         Route::get('/guardian/search-ajax', [GuardianController::class, 'searchAjax'])->name('guardian.search_ajax');
         Route::resource('guardian', GuardianController::class);
@@ -682,6 +684,7 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
 
             Route::get('/pay/compulsory/{feesID}/{studentID}', [FeesController::class, 'payCompulsoryFeesIndex'])->name('fees.compulsory.index');
             Route::post('pay/compulsory', [FeesController::class, 'payCompulsoryFeesStore'])->name('fees.compulsory.store');
+            Route::get('resend-receipt/{payment_id}', [FeesController::class, 'resendReceipt'])->name('fees.resend.receipt');
 
             // Optional Fees Payment Offline
             Route::get('/pay/optional/{feesID}/{studentID}', [FeesController::class, 'payOptionalFeesIndex'])->name('fees.optional.index');
@@ -701,7 +704,6 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             // Transaction list
             Route::get('/transaction-logs', [FeesController::class, 'feesTransactionsLogsIndex'])->name('fees.transactions.log.index');
             Route::get('/transaction-logs/list', [FeesController::class, 'feesTransactionsLogsList'])->name('fees.transactions.log.list');
-            // routes/web.php
             Route::get('fees-transactions-log-stats', [FeesController::class, 'feesTransactionsLogsStats'])->name('fees.transactions.log.stats');
 
             // Receipt
@@ -853,7 +855,8 @@ Route::group(['middleware' => ['Role', 'checkSchoolStatus', 'status','SwitchData
             Route::get('user/show', [NotificationController::class, 'userShow'])->name('notifications.user.show');
         });
         Route::resource('notifications', NotificationController::class);
-
+        Route::get('whatsapp/logs_list', [NotificationController::class, 'index_logs'])->name('whatsapp.index_logs');
+        Route::get('whatsapp/logs', [NotificationController::class, 'whatsapp_logs'])->name('whatsapp.logs');
 
 
 

@@ -90,17 +90,42 @@
 
     // ==== FORMATTERS ==== //
 
-    function occasionInput(value, row) {
-        return `<input type="hidden" name="child_id[]" value="${row.id}">
-                <input type="text" class="form-control" name="occasion[]" value="${value ?? ''}">`;
+    // function occasionInput(value, row) {
+    //     return `<input type="hidden" name="child_id[]" value="${row.id}">
+    //             <input type="text" class="form-control" name="occasion[]" value="${value ?? ''}">`;
+    // }
+    function occasionInput(value, row, index) {
+        let copyBtn = index === 0
+            ? `<button type="button" class="btn btn-sm btn-outline-primary ml-1 copy-occasion"><i class="fa fa-clipboard"></i></button>`
+            : '';
+
+        return `
+            <input type="hidden" name="child_id[]" value="${row.id}">
+            <div class="d-flex align-items-center">
+                <input type="text" class="form-control occasion-input" name="occasion[]" value="${value ?? ''}">
+                ${copyBtn}
+            </div>
+        `;
     }
 
     function pointsInput(value) {
         return `<input type="number" class="form-control" name="points[]" value="${value ?? ''}">`;
     }
 
-    function remarksInput(value) {
-        return `<input type="text" class="form-control" name="remarks[]" value="${value ?? ''}">`;
+    // function remarksInput(value) {
+    //     return `<input type="text" class="form-control" name="remarks[]" value="${value ?? ''}">`;
+    // }
+    function remarksInput(value, row, index) {
+        let copyBtn = index === 0
+            ? `<button type="button" class="btn btn-sm btn-outline-primary ml-1 copy-remarks"><i class="fa fa-clipboard"></i></button>`
+            : '';
+
+        return `
+            <div class="d-flex align-items-center">
+                <input type="text" class="form-control remarks-input" name="remarks[]" value="${value ?? ''}">
+                ${copyBtn}
+            </div>
+        `;
     }
 
     function dateInput(value) {
@@ -109,5 +134,15 @@
 
         return `<input type="date" class="form-control" name="date[]" value="${finalDate}">`;
     }
+
+    $(document).on('click', '.copy-occasion', function () {
+        let value = $('.occasion-input').first().val();
+        $('.occasion-input').not(':first').val(value);
+    });
+
+    $(document).on('click', '.copy-remarks', function () {
+        let value = $('.remarks-input').first().val();
+        $('.remarks-input').not(':first').val(value);
+    });
 </script>
 @endsection

@@ -252,25 +252,53 @@ class FirstSheetImport implements ToCollection, WithHeadingRow
                             'date'              => $date,
                         ]);
 
-                        UserCharge::create([
-                            'user_id'     => $guardian->id,
-                            'charge_type' => 'old_payments',
-                            'amount'      => $amount,
-                            'description' => Carbon::parse($date)->format('F-Y'),
-                            'is_paid'     => 1,
-                            'charge_date' => Carbon::parse($date)->format('Y-m-d'),
-                        ]);
                     }
 
-                    // Then insert the July monthly_fees row
                     UserCharge::create([
                         'user_id'     => $guardian->id,
-                        'charge_type' => 'monthly_fees',
-                        'amount'      => $row['dues'] ?? 0,
-                        'description' => 'July-2025',
-                        'is_paid'     => 0,
-                        'charge_date' => $date, // from loop last iteration
+                        'charge_type' => 'old_payments',
+                        'amount'      => $totalPayments + ($row['dues'] ?? 0),
+                        'description' => 'Admission & other',
+                        'is_paid'     => 1,
+                        'charge_date' => Carbon::parse($date)->format('Y-m-d'),
                     ]);
+                    // Then insert the July monthly_fees row
+                    // UserCharge::create([
+                    //     'user_id'     => $guardian->id,
+                    //     'charge_type' => 'monthly_fees',
+                    //     'amount'      => $row['dues'] ?? 0,
+                    //     'description' => 'July-2025',
+                    //     'is_paid'     => 0,
+                    //     'charge_date' => $date, // from loop last iteration
+                    // ]);
+
+                    $admissionDate = Carbon::createFromFormat('d-m-Y', $row['admission_date']);
+
+                    if ($admissionDate->day > 14) {
+                        $startMonth = $admissionDate->copy()->addMonth()->startOfMonth();
+                    } else {
+                        $startMonth = $admissionDate->copy()->startOfMonth();
+                    }
+
+                    $endMonth = $startMonth->month <= 1
+                        ? $startMonth->copy()->month(1)
+                        : $startMonth->copy()->addYear()->month(1);
+
+                    $monthlyFee = $row['monthly_fees'] ?? 0;
+
+                    while ($startMonth <= $endMonth) {
+
+                        UserCharge::create([
+                            'user_id'     => $guardian->id,
+                            'charge_type' => 'monthly_fees',
+                            'amount'      => $monthlyFee,
+                            'description' => $startMonth->format('F-Y'),
+                            'is_paid'     => 0,
+                            'charge_date' => $startMonth->format('Y-m-d'),
+                        ]);
+
+                        $startMonth->addMonth();
+                    }
                 }
 
             } catch (Throwable $e) {

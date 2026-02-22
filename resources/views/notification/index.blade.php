@@ -8,130 +8,22 @@
     <div class="content-wrapper">
         <div class="page-header">
             <h3 class="page-title">
-                {{ __('manage_notification') }}
+                {{ __('manage_notification') }} Logs
             </h3>
+            <a href="{{ route('whatsapp.index_logs') }}" class="btn btn-success">Logs</a>
         </div>
 
         <div class="row">
-            <div class="col-md-6 col-sm-12 grid-margin">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="card-title">
-                            {{ __('create_notification') }}
-                        </h4>
-                        <form id="create-form" class="pt-3" action="{{ http_url('notifications') }}" method="POST"
-                              novalidate="novalidate" data-success-function="formSuccessFunction">
-                            @csrf
-                            <div class="row">
-
-                                <div class="form-group col-sm-12 col-md-12">
-                                    <label>{{ __('roles') }} <span class="text-danger">*</span></label><br>
-                                    <div class="d-flex">
-                                        <div class="form-check form-check-inline">
-                                            <label class="form-check-label">
-                                                {{ Form::radio('type', 'Roles', true, ['id' => 'roles_type', 'class' => 'form-check-input type']) }}
-                                                {{ __('Roles') }}
-                                            </label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <label class="form-check-label">
-                                                {{ Form::radio('type', 'OverDueFees', false, ['id' => 'over_due_fees_type', 'class' => 'form-check-input type']) }}
-                                                {{ __('Over Due Fees') }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group col-sm-12 col-md-12 roles">
-                                    <label for="">{{ __('roles') }} <span class="text-danger">*</span></label>
-                                    {!! Form::select('roles[]', $roles, null, ['class' => 'form-control select2-dropdown select2-hidden-accessible','multiple', 'id' => 'roles']) !!}
-                                </div>
-
-                                <div class="form-group col-sm-12 col-md-12 over_due_fees_roles" style="display: none;">
-                                    <label for="">{{ __('roles') }} <span class="text-danger">*</span></label>
-                                    {!! Form::select('roles[]', $over_due_fees_roles, null, ['class' => 'form-control select2-dropdown select2-hidden-accessible','multiple', 'id' => 'over_due_fees_roles']) !!}
-                                </div>
-
-                                <div class="form-group col-sm-12 col-md-12">
-                                    <label for="">{{ __('title') }} <span class="text-danger">*</span></label>
-                                    {!! Form::text('title', null, ['required','class' => 'form-control','placeholder' => __('title')]) !!}
-                                </div>
-                                <div class="form-group col-sm-12 col-md-12">
-                                    <label for="">{{ __('message') }} <span class="text-danger">*</span></label>
-                                    {!! Form::textarea('message', null, ['required','class' => 'form-control','placeholder' => __('message'), 'rows' => 3]) !!}
-                                </div>
-
-                                <textarea id="user_id" name="user_id" style="display: none"></textarea>
-
-                                {{-- <textarea name="all_users" id="" cols="30" rows="10" hidden>{{ $all_users }}</textarea> --}}
-
-                                <div class="form-group col-sm-6 col-md-12">
-                                    <label>{{ __('image') }} </label>
-                                    <input type="file" name="image" class="file-upload-default"/>
-                                    <div class="input-group col-xs-12">
-                                        <input type="text" id="image" class="form-control file-upload-info" disabled="" placeholder="{{ __('image') }}"/>
-                                        <span class="input-group-append">
-                                            <button class="file-upload-browse btn btn-theme" type="button">{{ __('upload') }}</button>
-                                        </span>
-                                    </div>
-                                </div>
-
-                            </div>
-                            <input class="btn btn-theme float-right ml-3" id="create-btn" type="submit" value={{ __('submit') }}>
-                            <input class="btn btn-secondary float-right" id="reset" type="reset" value={{ __('reset') }}>
-
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-sm-12 grid-margin stretch-card">
-                <div class="card">
-                    <div class="card-body">
-
-                        {{-- <div class="row" id="toolbar-user">
-                            <div class="form-group col-sm-12 col-md-12">
-                                <label class="filter-menu">{{ __('Class Section') }} <span class="text-danger">*</span></label>
-
-                            </div>
-                            <div class="form-group col-sm-12 col-md-4">
-
-                            </div>
-                        </div> --}}
-                        <table aria-describedby="mydesc" class='table' id='table_user_list' data-toggle="table"
-                               data-url="{{ route('notifications.user.show') }}" data-click-to-select="true"
-                               data-side-pagination="server" data-pagination="true" data-page-list="[5, 10, 20, 50, 100, 200]"
-                               data-search="true" data-toolbar="#toolbar" data-show-columns="false" data-show-refresh="true"
-                               data-fixed-columns="false" data-fixed-number="2" data-fixed-right-number="1"
-                               data-trim-on-search="false" data-mobile-responsive="true" data-sort-name="id"
-                               data-sort-order="desc" data-maintain-selected="true" data-export-data-type='all' data-show-export="false" data-check-on-init="true" data-response-handler="responseHandler"
-                               data-export-options='{ "fileName": "notification-list-<?= date('d-m-y') ?>","ignoreColumn":["operate"]}'
-                               data-escape="true" data-query-params="NotificationUserqueryParams">
-                            <thead>
-                            <tr>
-                                <th data-field="state" data-checkbox="true"></th>
-                                <th scope="col" data-field="id" data-sortable="true" data-visible="false">{{ __('id') }}</th>
-                                <th scope="col" data-field="no">{{ __('no.') }}</th>
-                                <th scope="col" data-field="full_name">{{ __('name') }}</th>
-
-                                {{-- <th scope="col" data-field="operate" data-escape="false">{{ __('action') }} --}}
-                                </th>
-                            </tr>
-                            </thead>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
             <div class="col-md-12 grid-margin stretch-card">
                 <div class="card">
                     <div class="card-body">
                         <h4 class="card-title">
-                            {{ __('list_notification') }}
+                            {{ __('list_notification') }} Logs
                         </h4>
 
                         <table aria-describedby="mydesc" class='table' id='table_list' data-toggle="table"
-                               data-url="{{ route('notifications.show', [1]) }}" data-click-to-select="true"
+                               data-url="{{ route('whatsapp.logs') }}"
+                               data-click-to-select="true"
                                data-side-pagination="server" data-pagination="true" data-page-list="[5, 10, 20, 50, 100, 200]"
                                data-search="true" data-toolbar="#toolbar" data-show-columns="true" data-show-refresh="true"
                                data-fixed-columns="false" data-fixed-number="2" data-fixed-right-number="1"
@@ -141,14 +33,12 @@
                                data-escape="true" data-query-params="queryParams">
                             <thead>
                             <tr>
-                                <th scope="col" data-field="id" data-sortable="true" data-visible="false">{{ __('id') }}</th>
-                                <th scope="col" data-field="no">{{ __('no.') }}</th>
-                                <th scope="col" data-field="image" data-formatter="imageFormatter">{{ __('image') }}</th>
-                                <th scope="col" data-field="title">{{ __('title') }}</th>
-                                <th scope="col" data-field="message" data-events="tableDescriptionEvents" data-formatter="descriptionFormatter">{{ __('message') }}</th>
-                                <th scope="col" data-visible="false" data-field="send_to">{{ __('type') }}</th>
-                                <th scope="col" data-field="operate" data-escape="false">{{ __('action') }}
-                                </th>
+                                <th data-field="no">{{ __('no.') }}</th>
+                                <th data-field="number">{{ __('mobile') }}</th>
+                                <th scope="col" data-events="tableDescriptionEvents" data-formatter="descriptionFormatter" data-field="message">{{ __('description') }}</th>
+                                <th data-field="file_url" data-formatter="fileFormatter">{{ __('file') }}</th>
+                                <th data-field="status" data-formatter="statusFormatter">{{ __('status') }}</th>
+                                <th data-field="created_at">{{ __('date') }}</th>
                             </tr>
                             </thead>
                         </table>
@@ -272,4 +162,25 @@
         })
 
     </script>
+<script>
+function statusFormatter(value) {
+    if (!value) return '-';
+
+    if (value === 'success') {
+        return '<span class="badge badge-success">Success</span>';
+    }
+
+    if (value === 'failed') {
+        return '<span class="badge badge-danger">Failed</span>';
+    }
+
+    return '<span class="badge badge-secondary">' + value + '</span>';
+}
+</script>
+<script>
+function fileFormatter(value) {
+    if (!value) return '-';
+    return `<a href="${value}" target="_blank" class="btn btn-sm btn-primary">View</a>`;
+}
+</script>
 @endsection

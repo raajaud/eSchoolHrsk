@@ -86,6 +86,7 @@ class CheckSchoolStatus {
                     }
                 }
             } else {
+                // dd($user->hasRole('Student') || $user->hasRole('Parent'));
                 if ($user->hasRole('Student') || $user->hasRole('Parent')) {
                     Auth::logout();
                     $request->session()->flush();

@@ -134,6 +134,7 @@
                                         <th>Mode</th>
                                         <th>Date</th>
                                         <th>Created At</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -144,6 +145,13 @@
                                             <td>{{ ucfirst($log->payment_gateway) }}</td>
                                             <td>{{ \Carbon\Carbon::parse($log->date)->format('d-m-Y') }}</td>
                                             <td>{{ \Carbon\Carbon::parse($log->created_at)->format('d-m-Y h:i:s A') }}</td>
+                                            <td>
+                                                <button
+                                                    class="btn btn-sm btn-outline-primary resend-receipt"
+                                                    data-id="{{ $log->payment_id }}">
+                                                    Resend Receipt
+                                                </button>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -168,5 +176,19 @@
         }
 
 
+    </script>
+    <script>
+    $(document).on('click', '.resend-receipt', function () {
+        let paymentId = $(this).data('id');
+
+        if (!confirm('Resend receipt to parent WhatsApp?')) return;
+
+        $.get("{{ url('fees/resend-receipt') }}/" + paymentId, function (res) {
+            console.log(res);
+            alert(res.message || 'Receipt sent');
+        }).fail(function () {
+            alert('Failed to resend receipt');
+        });
+    });
     </script>
 @endsection

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Guardian;
 use App\Models\User;
 use App\Repositories\User\UserInterface;
 use App\Repositories\ClassSchool\ClassSchoolInterface;
@@ -69,7 +70,7 @@ class GuardianController extends Controller {
         $sort = request('sort', 'id');
         $order = request('order', 'DESC');
 
-        $sql = $this->user->guardian()->with('child.class_section');
+        $sql = $this->user->guardian()->with(['child.class_section', 'guardians']);
 
         if($request->class_id && $request->class_id != 'all')
         {
@@ -106,7 +107,31 @@ class GuardianController extends Controller {
         $no = 1;
         foreach ($res as $row) {
             $operate = BootstrapTableService::editButton(route('guardian.update', $row->id));
+            $operate .= '<button
+                class="btn btn-xs btn-rounded btn-icon btn-gradient-info add-more-guardian"
+                data-user-id="'.$row->id.'"
+                data-toggle="modal"
+                data-target="#addMoreGuardianModal"
+                title="Add More Guardian">
+                <i class="fa fa-plus"></i>
+            </button>&nbsp;';
             $tempRow = $row->toArray();
+            $guardianDetails = $row->guardians->map(function ($g) {
+                return '
+                    <span class="guardian-item" data-id="'.$g->id.'"
+                        data-name="'.e($g->name).'"
+                        data-mobile="'.e($g->mobile).'">
+                        '.$g->name.' ('.$g->mobile.')
+                        <a href="javascript:void(0)"
+                        class="edit-guardian text-primary ml-1"
+                        title="Edit Guardian">
+                            <i class="fa fa-edit"></i>
+                        </a>
+                    </span>
+                ';
+            })->implode('<br>');
+
+            $tempRow['more'] = $guardianDetails ?: '-';
             $tempRow['no'] = $no++;
             $tempRow['operate'] = $operate;
             $rows[] = $tempRow;
@@ -188,5 +213,43 @@ class GuardianController extends Controller {
             ->get();
         // dd($users);
         return view('partials.user_search_results', compact('users'));
+    }
+
+    public function addNew(Request $request)
+    {
+        ResponseService::noPermissionThenSendJson('guardian-create');
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'name'    => 'required',
+            'mobile'  => 'required'
+        ]);
+
+        DB::table('guardians')->insert([
+            'user_id'    => $request->user_id,
+            'name'       => $request->name,
+            'mobile'     => $request->mobile,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function updateMore(Request $request)
+    {
+        $request->validate([
+            'guardian_id' => 'required|exists:guardians,id',
+            'name' => 'required',
+            'mobile' => 'required'
+        ]);
+
+        Guardian::where('id', $request->guardian_id)
+            ->update([
+                'name' => $request->name,
+                'mobile' => $request->mobile,
+            ]);
+
+        return response()->json(['status' => true]);
     }
 }

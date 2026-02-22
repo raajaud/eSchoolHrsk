@@ -142,17 +142,17 @@ class Assignment extends Model {
                 return $query->where('school_id', Auth::user()->school_id);
             }
 
-            if (Auth::user()->hasRole('Student')) {
-                $studentAuth = Auth::user()->student;
-                $class_subject_ids = $studentAuth->selectedStudentSubjects()->pluck('class_subject_id');
-                return $query->whereIn('class_subject_id',$class_subject_ids)->where('school_id', Auth::user()->school_id);
-            }
-
             if (Auth::user()->hasRole('Guardian')) {
                 $childId = request('child_id');
                 $studentAuth = Students::where('id',$childId)->first();
                 $class_subject_ids = $studentAuth->selectedStudentSubjects()->pluck('class_subject_id');
                 return $query->whereIn('class_subject_id',$class_subject_ids)->where('school_id', $studentAuth->school_id);
+            }
+
+            if (Auth::user()->hasRole('Student')) {
+                $studentAuth = Auth::user()->student;
+                $class_subject_ids = $studentAuth->selectedStudentSubjects()->pluck('class_subject_id');
+                return $query->whereIn('class_subject_id',$class_subject_ids)->where('school_id', Auth::user()->school_id);
             }
 
     //        if (Auth::user()->hasRole('Teacher')) {

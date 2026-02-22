@@ -45,7 +45,7 @@ class DatabaseBackup extends Command
 
     private function backupDatabase($dbName, $filePath)
     {
-        $command = "mysqldump --user=" . env('DB_USERNAME') .
+        $command = "mysqldump --no-tablespaces --user=" . env('DB_USERNAME') .
             " --password=" . env('DB_PASSWORD') .
             " --host=" . env('DB_HOST') .
             " $dbName | gzip > $filePath";

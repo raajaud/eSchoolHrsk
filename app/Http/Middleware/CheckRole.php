@@ -21,6 +21,7 @@ class CheckRole {
      */
     public function handle(Request $request, Closure $next) {
         $school_database_name = Session::get('school_database_name');
+        // dd($school_database_name);
         if ($school_database_name) {
             DB::setDefaultConnection('school');
             Config::set('database.connections.school.database', $school_database_name);
@@ -32,9 +33,10 @@ class CheckRole {
             DB::connection('mysql')->reconnect();
             DB::setDefaultConnection('mysql');
         }
-
+        
+        // dd(Auth::user()->id, DB::connection()->getDatabaseName());
         if (Auth::user()) {
-
+            // dd(Auth::check());
             return $next($request);
         }
         return response()->view('auth.login');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use App\Models\Role;
+use App\Models\User;
 use App\Repositories\Fees\FeesInterface;
 use App\Repositories\Notification\NotificationInterface;
 use App\Repositories\User\UserInterface;
@@ -99,12 +100,12 @@ class NotificationController extends Controller
                 'title' => $request->title,
                 'message' => $request->message,
                 'send_to' => $roles ?? '',
-                'image' => $request->hasFile('image') ? $request->image : null,
+                'image' => $request->file('image') ? $request->file('image')->store('notifications', 'public') : null,
                 'session_year_id' => $sessionYear->id
             ];
             $notification = $this->notification->create($data);
             $notifyUser = [];
-            
+
             if ($request->has('user_id')) {
                 $notifyUser = explode(',', $request->user_id);
             }
@@ -120,7 +121,56 @@ class NotificationController extends Controller
             $type = 'Notification';
 
             DB::commit();
-            send_notification($notifyUser, $title, $body, $type, $customData); // Send Notification
+            // send_notification($notifyUser, $title, $body, $type, $customData); // Send Notification
+
+            try {
+                $fileUrl = $notification->image
+                    ? $notification->image
+                    : null;
+
+                $parents = User::with([
+                        'child.user',
+                        'child.class_section.class',
+                        'guardians'
+                    ])
+                    ->whereIn('id', $notifyUser)
+                    ->get();
+
+                $numbers = collect();
+
+                foreach ($parents as $parent) {
+
+                    if (!empty($parent->mobile)) {
+                        $numbers->push($parent->mobile);
+                    }
+
+                    foreach ($parent->guardians as $guardian) {
+                        if (!empty($guardian->mobile)) {
+                            $numbers->push($guardian->mobile);
+                        }
+                    }
+                }
+
+                $numbers = $numbers
+                    ->flatten()              // ✅ VERY IMPORTANT
+                    ->map(fn ($n) => trim((string) $n))
+                    ->filter()
+                    ->unique()
+                    ->values();
+
+                // dd($fileUrl);
+                send_whatsapp_notification(
+                    $numbers,                 // ✅ actual mobile numbers
+                    "*{$title}*\n\n{$body}",  // message
+                    $fileUrl
+                );
+            } catch (\Throwable $e) {
+                \Log::error('WhatsApp notification failed', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+
+
             ResponseService::successResponse('Data Stored Successfully');
         } catch (Throwable $e) {
             if (Str::contains($e->getMessage(), [
@@ -213,6 +263,76 @@ class NotificationController extends Controller
         }
     }
 
+    public function index_logs()
+    {
+        //
+        ResponseService::noFeatureThenRedirect('Announcement Management');
+        ResponseService::noAnyPermissionThenRedirect(['notification-create', 'notification-list']);
+
+        $roles = Role::whereNot('name', 'School Admin')->pluck('name','id');
+        $over_due_fees_roles = Role::whereIn('name', ['Student','Guardian'])->pluck('name','id');
+        $users = $this->user->guardian()->with('roles')->whereHas('child.user', function ($q) {
+            $q->owner();
+        })->orWhere(function ($q) use ($roles) {
+            $q->where('school_id', Auth::user()->school_id)
+                ->whereHas('roles', function ($q) use ($roles) {
+                    $q->whereIn('name', $roles);
+                });
+        })->get();
+
+        $all_users = $users->pluck('id')->toArray();
+        $all_users = implode(",", $all_users);
+
+        return view('notification.index', compact('users', 'roles', 'all_users', 'over_due_fees_roles'));
+    }
+
+    public function whatsapp_logs()
+    {
+        ResponseService::noPermissionThenRedirect('notification-list');
+
+        $offset = request('offset', 0);
+        $limit  = request('limit', 10);
+        $sort   = request('sort', 'id');
+        $order  = request('order', 'DESC');
+        $search = request('search');
+
+        $query = DB::table('whatsapp_logs')
+            ->when($search, function ($q) use ($search) {
+                $q->where('number', 'LIKE', "%$search%")
+                ->orWhere('message', 'LIKE', "%$search%")
+                ->orWhere('response', 'LIKE', "%$search%");
+            });
+
+        $total = $query->count();
+
+        $rows = $query
+            ->orderBy($sort, $order)
+            ->skip($offset)
+            ->take($limit)
+            ->get();
+
+        $data = [];
+        $no = $offset + 1;
+
+        foreach ($rows as $row) {
+            $data[] = [
+                'id'         => $row->id,
+                'no'         => $no++,
+                'number'     => $row->number,
+                'message'    => nl2br($row->message).'</br></br>Message- </br>'.$row->response,
+                'file_url'   => $row->file_url,
+                'status'     => $row->status,
+                'response'   => $row->response,
+                'created_at' => date('d-m-Y H:i', strtotime($row->created_at)),
+            ];
+        }
+
+        return response()->json([
+            'total' => $total,
+            'rows'  => $data
+        ]);
+    }
+
     public function userShow(Request $request)
     {
 
@@ -246,9 +366,9 @@ class NotificationController extends Controller
         if ($type == 'OverDueFees') {
             $today = Carbon::now()->format('Y-m-d');
             $users_ids = [];
-            
+
             $fees = $this->fees->builder()->whereDate('due_date', '<', $today)->get();
-            
+
             if ($fees->isNotEmpty()) {
                 foreach ($fees as $fee) {
                     $overdueStudents = $this->user->builder()
@@ -291,9 +411,9 @@ class NotificationController extends Controller
         $rows = array();
         $no = 1;
         foreach ($res as $row) {
-            
+
             $tempRow = $row->toArray();
-            $tempRow['no'] = $no++;            
+            $tempRow['no'] = $no++;
             $rows[] = $tempRow;
         }
 

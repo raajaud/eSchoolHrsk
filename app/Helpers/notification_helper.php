@@ -3,7 +3,81 @@
 use App\Models\User;
 use App\Services\CachingService;
 use Google\Client;
+use Illuminate\Support\Facades\Http;
 
+if (!function_exists('send_whatsapp_notification')) {
+
+    function send_whatsapp_notification($numbers, string $message, ?string $fileUrl = null, array $extra = [])
+    {
+        $numbers = collect($numbers)
+            ->flatten()
+            ->map(fn ($n) => trim((string) $n))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // dd($numbers);
+
+        foreach ($numbers as $number) {
+
+            if (is_array($number)) {
+                $number = reset($number); // extract value
+            }
+
+            $number = trim((string) $number);
+
+            $payload = array_merge([
+                'number' => '91' . $number,
+                // 'number'  => '917488699325',
+                'caption' => $message,
+            ], $extra);
+
+            if (!empty($fileUrl) && filter_var($fileUrl, FILTER_VALIDATE_URL)) {
+                $payload['file'] = $fileUrl;
+            }
+
+            try {
+                // dd($payload);
+                $response = Http::post('http://168.231.123.203:3000/send-media', $payload);
+
+                $responseBody = $response->json();
+
+                $status  = ($response->successful() && ($responseBody['success'] ?? false))
+                            ? 'success'
+                            : 'failed';
+
+                $errorMessage = $responseBody['message'] ?? $response->body();
+
+                DB::table('whatsapp_logs')->insert([
+                    'number'     => $number,
+                    'message'    => $message,
+                    'file_url'   => $fileUrl,
+                    'status'     => $status,
+                    'response'   => $errorMessage,
+                    'created_at'=> now(),
+                ]);
+
+            } catch (\Throwable $e) {
+
+                DB::table('whatsapp_logs')->insert([
+                    'number'   => $number,
+                    'message'  => $message,
+                    'file_url' => $fileUrl,
+                    'status'   => 'failed',
+                    'response' => $e->getMessage(),
+                    'created_at' => now(),
+                ]);
+
+                \Log::error('WhatsApp send failed', [
+                    'number' => $number,
+                    'error'  => $e->getMessage()
+                ]);
+            }
+        }
+    }
+}
+
+// Http::post('http://168.231.123.203:3000/send-media', $payload);
 function send_notification($user, $title, $body, $type, $customData = []) {
     $FcmTokens = User::where('fcm_id', '!=', '')->whereIn('id', $user)->get()->pluck('fcm_id');
 
@@ -14,7 +88,7 @@ function send_notification($user, $title, $body, $type, $customData = []) {
     $url = 'https://fcm.googleapis.com/v1/projects/' . $project_id . '/messages:send';
 
     $access_token = getAccessToken();
-   
+
     foreach ($FcmTokens as $FcmToken) {
 
         $data = [
@@ -36,7 +110,7 @@ function send_notification($user, $title, $body, $type, $customData = []) {
                         "sound" => "default"  // This is for Android sound
                     ],
                     "priority" => "high"
-                   
+
                 ],
                 "apns" => [
                     "headers" => [
@@ -51,7 +125,7 @@ function send_notification($user, $title, $body, $type, $customData = []) {
                             "type" => $type,
                             ...$customData,
                             "sound" => "default",  // This is for iOS sound
-                            "mutable-content" => 1, 
+                            "mutable-content" => 1,
                             "content-available" => 1
                         ]
                     ]
@@ -60,7 +134,7 @@ function send_notification($user, $title, $body, $type, $customData = []) {
         ];
 
         $encodedData = json_encode($data);
-       
+
         $headers = [
             'Authorization: Bearer ' . $access_token,
             'Content-Type: application/json',
@@ -86,7 +160,7 @@ function send_notification($user, $title, $body, $type, $customData = []) {
         }
         // Close connection
         curl_close($ch);
-    }    
+    }
 }
 
 function getAccessToken()

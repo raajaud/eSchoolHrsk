@@ -218,17 +218,17 @@ class User extends Authenticatable implements MustVerifyEmail {
         return $this->hasMany(ExamResult::class, 'student_id', 'id');
     }
 
-    public function exam_marks() {
-        return $this->hasMany(ExamMarks::class, 'student_id', 'id');
-    }
-    // public function exam_marks()
-    // {
-    //     // Compulsory subjects
-    //     return $this->hasMany(ExamMarks::class, 'student_id', 'id')
-    //                 ->whereHas('class_subject', function ($q) {
-    //                     $q->where('type', 'Compulsory');
-    //                 });
+    // public function exam_marks() {
+    //     return $this->hasMany(ExamMarks::class, 'student_id', 'id');
     // }
+    public function exam_marks()
+    {
+        // Compulsory subjects
+        return $this->hasMany(ExamMarks::class, 'student_id', 'id')
+                    ->whereHas('class_subject', function ($q) {
+                        $q->where('type', 'Compulsory');
+                    });
+    }
 
     public function optional_exam_marks()
     {
@@ -429,4 +429,9 @@ class User extends Authenticatable implements MustVerifyEmail {
     //     return $this->hasOne(PaymentTransaction::class, 'user_id')
     //         ->latest('date');
     // }
+
+    public function guardians()
+    {
+        return $this->hasMany(Guardian::class, 'user_id');
+    }
 }

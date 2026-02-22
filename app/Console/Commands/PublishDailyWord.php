@@ -47,11 +47,10 @@ class PublishDailyWord extends Command
                 $announcement = Announcement::create([
                     'title' => 'Word of the Day',
                     'description' =>
-                        '<b>' . $word->english_word . '</b> (' . $word->pronunciation . ')<br>' .
-                        'Hindi: ' . $word->hindi_word . '<br>' .
-                        'Meaning: ' . $word->hindi_meaning,
-                    'session_year_id' => 4, // dynamic if needed
-                    'school_id' => 5,       // dynamic if needed
+                        "\n{$word->english_word} - ({$word->pronunciation})\n" .
+                        "Meaning: {$word->hindi_word} ({$word->hindi_meaning})",
+                    'session_year_id' => 4,
+                    'school_id' => 5,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

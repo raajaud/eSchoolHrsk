@@ -10,7 +10,6 @@ use App\Models\ClassSection;
 use App\Models\Subject;
 use App\Models\ClassSubject;
 use App\Models\SubjectTeacher;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 //function getSystemSettings($name = '') {
@@ -196,6 +195,7 @@ function findExamGrade($percentage) {
     return '';
 }
 
+
 function findPercentageFromGrade($grade)
 {
     $grade = strtoupper(trim($grade));
@@ -278,17 +278,166 @@ function getCategoryStartOverrides($categoryUsagePeriod)
 function getCategoryAdjustedFee($row)
 {
     // dd($row->student->class_section_id);
-    $guardian = User::where('id', $row->student->guardian_id)->first();
-    // dd($guardian);
+    $category = optional(
+        $row->extra_student_details->firstWhere(fn($f) => $f->form_field->name === 'Category')
+    )->data;
+    $categoryUsagePeriod = optional(
+        $row->extra_student_details->firstWhere(fn($f) => $f->form_field->name === 'category_usage_period')
+    )->data;
+    // dd($categoryUsagePeriod);
+    $admission_date = $row->student->admission_date;
+    // dd($admission_date);
+    $class_id = $row->student->class_section_id;
+    $books = [
+        ['id' => 8, 'name' => 'Nursery', 'price' => 1910],
+        ['id' => 9, 'name' => 'LKG', 'price' => 1985],
+        ['id' => 10, 'name' => 'UKG', 'price' => 2010],
+        ['id' => 11, 'name' => 'Class I', 'price' => 3290],
+        ['id' => 12, 'name' => 'Class II', 'price' => 3385],
+        ['id' => 13, 'name' => 'Class III', 'price' => 3510],
+        ['id' => 14, 'name' => 'Class IV', 'price' => 3715],
+        ['id' => 15, 'name' => 'Class V', 'price' => 3060],
+        ['id' => 16, 'name' => 'Class VI', 'price' => 3799],
+    ];
+
+    $categoryFees = [
+        'day scholar'   => 500,
+        'conveyance'    => 500,
+        'day boarding'  => 1500,
+        'hostel'        => 3500,
+    ];
+
+    $categoryStartDates = [
+        'day scholar'   => '2025-02-01',
+        'conveyance'    => '2025-03-01',
+        'day boarding'  => '2025-04-01',
+        'hostel'        => '2025-05-01',
+    ];
+
+    $now = \Carbon\Carbon::now();
+    $admission = \Carbon\Carbon::parse($admission_date);
+
+    $categories = collect(explode(',', $category))
+        ->map(fn($c) => strtolower(trim($c)))
+        ->filter()
+        ->unique()
+        ->values();
+
+    // Always include 'day scholar' if not present
+    if (!$categories->contains('day scholar')) {
+        $categories->prepend('day scholar');
+    }
+    if (!$categories->contains('admission')) {
+        $categories->prepend('admission');
+    }
+    if (!$categories->contains('books')) {
+        $categories->prepend('books');
+    }
+
     $breakup = [];
-    $total = (int) $guardian->total_fees;
+    $total = 0;
+
+    // Get custom start/end dates
+    $customStarts = getCategoryStartOverrides($categoryUsagePeriod);
+    // dd($customStarts);
+    foreach ($categories as $cat) {
+        if($cat == 'admission'){
+                $admissionFees = 2500;
+                $usagePeriods = $customStarts[$cat]??[];
+                // dd($usagePeriods);
+                $discount = isset($usagePeriods[0])?$usagePeriods[0]['start']:0;
+                $admissionFees = $admissionFees - $discount;
+                $breakup[$cat] = [
+                    'months' => 0,
+                    // 'month_names' => ['Admission Fees'],
+                    'month_names' => [],
+                    'fee_per_month' => $admissionFees,
+                    'total' => $admissionFees,
+                ];
+                $total += $admissionFees;
+        }else if($cat == 'books'){
+            $book = collect($books)->firstWhere('id', $class_id);
+            if ($book) {
+
+                $breakup[$cat] = [
+                    'months' => 0,
+                    // 'month_names' => ['Book Fee'],
+                    'month_names' => [],
+                    'fee_per_month' => $book['price'],
+                    'total' => $book['price'],
+                ];
+                $total += $book['price'];
+            }
+
+        }else{
+            $defaultStart = \Carbon\Carbon::parse($categoryStartDates[$cat] ?? '2025-02-01');
+
+            $usagePeriods = $customStarts[$cat] ?? [
+                ['start' => $defaultStart]
+            ];
+
+            foreach ($usagePeriods as $period) {
+                $start = \Carbon\Carbon::parse($period['start']);
+                $end = isset($period['end']) ? \Carbon\Carbon::parse($period['end']) : $now;
+
+                if ($end->lt($defaultStart)) {
+                    continue;
+                }
+
+                if ($start->lt($defaultStart)) {
+                    $start = $defaultStart->copy();
+                }
+
+                if ($start->gt($end)) {
+                    continue;
+                }
+
+                // Adjust admission date if needed
+                $from = $admission->gt($start) ? $admission->copy() : $start->copy();
+
+                if ($from->day >= 16) {
+                    $from->addMonth()->startOfMonth();
+                } else {
+                    $from->startOfMonth();
+                }
+
+                $to = $end->copy()->endOfMonth();
+
+                $months = [];
+                $temp = $from->copy();
+                while ($temp <= $to) {
+                    $months = array();
+                    // $months[] = $temp->format('F');
+                    $months[] = $temp->format('F');
+                    $temp->addMonth();
+                }
+
+                $feePerMonth = $categoryFees[$cat] ?? 0;
+                $totalForCat = count($months) * $feePerMonth;
+
+                if (!isset($breakup[$cat])) {
+                    $breakup[$cat] = [
+                        'months' => 0,
+                        'month_names' => [],
+                        'fee_per_month' => $feePerMonth,
+                        'total' => 0,
+                    ];
+                }
+
+                $breakup[$cat]['months'] += count($months);
+                $breakup[$cat]['month_names'] = array_unique(array_merge($breakup[$cat]['month_names'], $months));
+                $breakup[$cat]['total'] += $totalForCat;
+
+                $total += $totalForCat;
+            }
+        }
+    }
     // dd($row);
-    $month = $guardian->due_month;
+
     return [
-        'paid' => $guardian->total_paid ?? 0,
+        'paid' => totalPaid($row) ?? 0,
         'total' => $total,
         'breakup' => $breakup,
-        'month' => $month,
     ];
 
 }
@@ -339,3 +488,4 @@ if (!function_exists('assignTeacherToAllSubjects')) {
         return true;
     }
 }
+
